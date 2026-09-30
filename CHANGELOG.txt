@@ -1,6 +1,7 @@
 v0.7.0-alpha3 - 30/09/2026
 - Tutti i connettori live usano la rete nativa QGIS, compatibile con proxy e autenticazione dell'applicazione.
 - Diagnostica migrata sulla stessa rete e classificazione separata dei servizi protetti HTTP 401/403.
+- Parser ARPAE e INGV isolati con test automatici per soglie, coordinate ed eventi.
 
 v0.7.0-alpha2 - 30/09/2026
 - Stato di freschezza Recente/Ritardato/Scaduto/Data assente e eta in minuti.

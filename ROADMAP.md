@@ -5,6 +5,7 @@
 - [x] Registro unico delle fonti con chiavi stabili.
 - [x] Contratto comune per i connettori.
 - [x] Parser ARPAV separato e testabile.
+- [x] Parser ARPAE e INGV separati e testabili senza QGIS.
 - [x] Selezione dell'ultima misura ARPAV numerica, ignorando gli intervalli ancora vuoti.
 - [x] Gestione rete tramite strumenti QGIS, con proxy, SSL e annullamento.
   - [x] ARPAV trasferito su `QgsBlockingNetworkRequest` thread-safe.
