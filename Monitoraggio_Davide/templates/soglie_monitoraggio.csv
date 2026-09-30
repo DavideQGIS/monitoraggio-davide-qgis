@@ -1,0 +1,4 @@
+source;sensor_id;station_name;sensor_type;direction;attention;prealarm;alarm;unit;valid_from;reference
+ARPA Lombardia;ID_UFFICIALE;;Livello idrometrico;above;;;;m;AAAA-MM-GG;Atto o URL ufficiale
+ARPAV;ID_UFFICIALE;;Livello idrometrico;above;;;;m;AAAA-MM-GG;Atto o URL ufficiale
+Meteotrentino;ID_UFFICIALE;;Precipitazione;above;;;;mm;AAAA-MM-GG;Atto o URL ufficiale

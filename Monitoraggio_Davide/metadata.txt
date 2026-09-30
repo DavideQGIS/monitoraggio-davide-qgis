@@ -1,0 +1,16 @@
+[general]
+name=Monitoraggio Davide
+qgisMinimumVersion=3.22
+qgisMaximumVersion=4.99
+description=Monitoraggio Davide: quadro operativo GIS per sensori, soglie, meteo, radar, fiumi, dighe, neve, frane, sismica e Copernicus.
+version=0.6.0
+author=Davide Trentin
+email=
+about=Quadro operativo live con reti regionali, ARPAE Emilia-Romagna, terremoti INGV, soglie documentate, aggiornamento periodico e diagnostica.
+category=Plugins
+experimental=True
+deprecated=False
+icon=icons/monitoraggio.svg
+homepage=
+tracker=
+repository=

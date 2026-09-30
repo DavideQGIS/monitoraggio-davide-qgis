@@ -1,0 +1,20 @@
+name: Crea pacchetto QGIS
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Crea ZIP installabile
+        run: zip -r "Monitoraggio_Davide-${GITHUB_REF_NAME}.zip" Monitoraggio_Davide -x "*/__pycache__/*" "*.pyc"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-qgis-${{ github.ref_name }}
+          path: Monitoraggio_Davide-${{ github.ref_name }}.zip
+

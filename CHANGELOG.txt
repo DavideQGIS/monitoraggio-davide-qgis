@@ -1,0 +1,54 @@
+v0.6.0 - 20/09/2026
+- Emilia-Romagna aggiunta come quarta area operativa.
+- Connettore ufficiale ARPAE per circa 265 idrometri.
+- Importazione automatica delle soglie idrometriche 1, 2 e 3.
+- Coordinate, valori, stato del dato e riferimenti ufficiali in mappa.
+- Stato Dato assente distinto da Soglia assente.
+
+v0.5.0 - 20/09/2026
+- Importazione CSV delle soglie con riferimento ufficiale obbligatorio.
+- Valutazione deterministica di attenzione, preallarme e allarme.
+- Criticita e valori soglia nella tabella attributi e nelle etichette in mappa.
+- Simbologia verde, gialla, arancione, rossa e grigia.
+- Modello CSV incluso e generabile dall'interfaccia.
+
+v0.4.0 - 20/09/2026
+- Collegamento reale alla rete idrometeorologica ARPAV, con filtro Padova.
+- Collegamento reale agli eventi sismici INGV e layer georeferenziato.
+- Collegamento alle stazioni attive Meteotrentino e agli ultimi dati.
+- Rimosso ogni riferimento e comando relativo ad AI o Copilot.
+- Caricamento regionale automatico per Lombardia e Veneto.
+- Etichette live dei sensori direttamente in mappa, inclusi i livelli idrometrici.
+
+v0.3.2 - 20/09/2026
+- Compatibilita enum PyQt6/QGIS 4 e PyQt5/QGIS 3.
+- Corrette finestre, modalita, allineamenti, tabelle e intestazioni.
+
+v0.3.1 - 20/09/2026
+- Plugin rinominato integralmente in Monitoraggio Davide.
+- Aggiornati nome QGIS, menu, finestra, impostazioni, gruppo layer e pacchetto ZIP.
+
+v0.3.0 - 20/09/2026
+- Apertura automatica del quadro cartografico.
+- Basemap Google Hybrid XYZ nel gruppo Monitoraggio UTR.
+- Tutti i sensori ARPA georeferenziabili caricati e tematizzati.
+- Aggiornamento automatico configurabile 5-60 minuti.
+- Sostituzione sicura del solo layer sensori precedente.
+- Nessuna cancellazione dei layer o del progetto QGIS dell'utente.
+
+v0.2.0 - 16/09/2026
+- Primo connettore reale ARPA Lombardia.
+- Filtro provincia con Brescia predefinita.
+- Download anagrafica e ultimo dato per sensore a blocchi controllati.
+- Tabella operativa e layer puntuale EPSG:4326 in QGIS.
+- Parser tollerante alle varianti dei nomi dei campi API.
+
+v0.1.0 - 14/09/2026
+- Prima base installabile.
+- Interfaccia e colori coerenti con RiSC v0.6.30.
+- Aree Lombardia, Veneto e Trentino.
+- Predefinito Brescia e priorita Padova.
+- Catalogo sensori idro-meteo-nivo, dighe, frane, sismica, radar e Copernicus.
+- Diagnostica fonti in thread separato.
+- Prompt diagnostico sicuro per Copilot.
+- Schema cache SQLite e predisposizione PostGIS.
