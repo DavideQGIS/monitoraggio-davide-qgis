@@ -12,7 +12,8 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from .config import AREAS, DEFAULT_AREA, DEFAULT_PROVINCE, PLUGIN_VERSION, SENSOR_TYPES, SOURCE_CATALOG
-from .database import POSTGIS_NOTE, initialize_sqlite
+from .database import POSTGIS_NOTE, initialize_sqlite, save_diagnostic, upsert_sources
+from .core.freshness import annotate_freshness
 from .diagnostics import DiagnosticWorker
 from .connectors.arpa_lombardia import ArpaLombardiaWorker
 from .connectors.arpav import ArpavWorker
@@ -63,6 +64,7 @@ class MonitoraggioDialog(QDialog):
         self.live_layer = None
         self.thresholds = []
         self.threshold_path = self.settings.value("threshold_csv", "", type=str)
+        self.cache_path = self.settings.value("cache_sqlite", "", type=str)
         if self.threshold_path and os.path.isfile(self.threshold_path):
             try: self.thresholds = load_thresholds(self.threshold_path)
             except Exception: self.thresholds = []
@@ -164,9 +166,9 @@ class MonitoraggioDialog(QDialog):
         page=QWidget(); layout=QVBoxLayout(page)
         commands=QHBoxLayout(); self.btn_arpa=QPushButton("CARICA RETE REGIONALE"); self.btn_arpa.setObjectName("primaryButton"); self.btn_arpa.clicked.connect(self.load_arpa); commands.addWidget(self.btn_arpa)
         self.arpa_label=QLabel("Pronto · il filtro geografico usa la provincia selezionata"); commands.addWidget(self.arpa_label,1); layout.addLayout(commands)
-        self.arpa_table=QTableWidget(0,10); self.arpa_table.setHorizontalHeaderLabels(["Stazione","Comune","Prov.","Sensore","Unita","Quota","Ultimo dato","Criticita","Data/ora","ID sensore"]); self.arpa_table.verticalHeader().setVisible(False); self.arpa_table.setEditTriggers(NO_EDIT_TRIGGERS); self.arpa_table.setAlternatingRowColors(True)
+        self.arpa_table=QTableWidget(0,12); self.arpa_table.setHorizontalHeaderLabels(["Stazione","Comune","Prov.","Sensore","Unita","Quota","Ultimo dato","Criticita","Freschezza","Eta min","Data/ora","ID sensore"]); self.arpa_table.verticalHeader().setVisible(False); self.arpa_table.setEditTriggers(NO_EDIT_TRIGGERS); self.arpa_table.setAlternatingRowColors(True)
         self.arpa_table.horizontalHeader().setSectionResizeMode(0,HEADER_STRETCH)
-        for col in range(1,10): self.arpa_table.horizontalHeader().setSectionResizeMode(col,HEADER_CONTENTS)
+        for col in range(1,12): self.arpa_table.horizontalHeader().setSectionResizeMode(col,HEADER_CONTENTS)
         layout.addWidget(self.arpa_table,1); self.tabs.addTab(page,"Meteo e radar")
 
     def _seismic(self):
@@ -201,7 +203,8 @@ class MonitoraggioDialog(QDialog):
         page=QWidget(); layout=QVBoxLayout(page)
         db=QGroupBox("Geodatabase"); form=QFormLayout(db); self.pg_host=QLineEdit(); self.pg_db=QLineEdit("monitoraggio_utr"); self.pg_user=QLineEdit(); self.pg_port=QSpinBox(); self.pg_port.setRange(1,65535); self.pg_port.setValue(5432)
         form.addRow("Server PostGIS",self.pg_host); form.addRow("Database",self.pg_db); form.addRow("Porta",self.pg_port); form.addRow("Utente",self.pg_user); note=QLabel(POSTGIS_NOTE); note.setWordWrap(True); form.addRow(note)
-        cache=QPushButton("CREA CACHE SQLITE DI PROVA"); cache.clicked.connect(self.create_cache); form.addRow(cache); layout.addWidget(db)
+        self.cache_path_edit=QLineEdit(self.cache_path); self.cache_path_edit.setReadOnly(True); form.addRow("Cache SQLite",self.cache_path_edit)
+        cache=QPushButton("CREA/SELEZIONA CACHE SQLITE"); cache.clicked.connect(self.create_cache); form.addRow(cache); layout.addWidget(db)
         src=QGroupBox("Fonti predisposte"); sl=QVBoxLayout(src)
         for item in SOURCE_CATALOG: sl.addWidget(QLabel("• %s · %s"%(item["name"],item["group"])))
         layout.addWidget(src); layout.addStretch(1); self.tabs.addTab(page,"Impostazioni")
@@ -253,12 +256,13 @@ class MonitoraggioDialog(QDialog):
         self.arpa_thread=QThread(self); self.arpa_worker=worker; self.arpa_worker.moveToThread(self.arpa_thread); self.arpa_thread.started.connect(self.arpa_worker.run); self.arpa_worker.progress.connect(self._diag_progress); self.arpa_worker.finished.connect(self._arpa_finished); self.arpa_worker.failed.connect(self._arpa_failed); self.arpa_worker.finished.connect(self.arpa_thread.quit); self.arpa_worker.failed.connect(self.arpa_thread.quit); self.arpa_thread.finished.connect(self._arpa_cleanup); self.arpa_thread.start()
 
     def _arpa_finished(self,stations,summary):
+        freshness=annotate_freshness(stations)
         counts=apply_thresholds(stations,self.thresholds,getattr(self,"current_source",""))
         self.arpa_table.setRowCount(len(stations))
         for row,station in enumerate(stations):
-            latest=station.get("latest") or {}; value=latest.get("value"); values=(station.get("name"),station.get("municipality"),station.get("province"),station.get("sensor_type"),station.get("unit"),station.get("elevation"),"" if value is None else str(value),station.get("criticality","Soglia assente"),latest.get("observed_at",""),station.get("sensor_id"))
+            latest=station.get("latest") or {}; value=latest.get("value"); values=(station.get("name"),station.get("municipality"),station.get("province"),station.get("sensor_type"),station.get("unit"),station.get("elevation"),"" if value is None else str(value),station.get("criticality","Soglia assente"),latest.get("freshness","Data assente"),latest.get("age_minutes"),latest.get("observed_at",""),station.get("sensor_id"))
             for col,item_value in enumerate(values): self.arpa_table.setItem(row,col,QTableWidgetItem("" if item_value is None else str(item_value)))
-        source=getattr(self,"current_source","Rete regionale"); self.card_sensors.setText("Sensori caricati\n%d"%summary["sensors"]); self.card_measures.setText("Con ultimo dato\n%d"%summary["measurements"]); self.card_alerts.setText("Allarmi\n%d"%counts["Allarme"]); self.arpa_label.setText("%s · %d righe · %d ultimi dati · A:%d P:%d ALL:%d"%(source,summary["stations"],summary["measurements"],counts["Attenzione"],counts["Preallarme"],counts["Allarme"])); self.phase.setText(source+" caricato"); self.progress.setValue(100)
+        source=getattr(self,"current_source","Rete regionale"); self.card_sensors.setText("Sensori caricati\n%d"%summary["sensors"]); self.card_measures.setText("Con ultimo dato\n%d"%summary["measurements"]); self.card_alerts.setText("Allarmi\n%d"%counts["Allarme"]); self.arpa_label.setText("%s · %d righe · %d dati · recenti:%d ritardati:%d scaduti:%d · A:%d P:%d ALL:%d"%(source,summary["stations"],summary["measurements"],freshness["Recente"],freshness["Ritardato"],freshness["Scaduto"],counts["Attenzione"],counts["Preallarme"],counts["Allarme"])); self.phase.setText(source+" caricato"); self.progress.setValue(100)
         self._add_arpa_layer(stations)
         self.last_refresh.setText("Aggiornato: "+__import__("datetime").datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
 
@@ -306,6 +310,9 @@ class MonitoraggioDialog(QDialog):
         values=(row["source"],row["group"],row["status"],row["http"],str(row["ms"]),row["detail"])
         color={"OK":"#dceee2","AVVISO":"#fff1b8","ERRORE":"#f7caca"}.get(row["status"],"#fff")
         for c,value in enumerate(values): item=QTableWidgetItem(value); item.setBackground(QBrush(QColor(color))); self.diag_table.setItem(r,c,item)
+        if self.cache_path and os.path.isfile(self.cache_path):
+            try: save_diagnostic(self.cache_path,row)
+            except Exception as exc: self.phase.setText("Cache diagnostica: "+str(exc))
     def _diag_finished(self,summary):
         text="OK %d · Avvisi %d · Errori %d"%(summary["ok"],summary["warnings"],summary["errors"]); self.diag_summary.setText(text); self.source_status.setText("Fonti: "+text); self.phase.setText("Diagnostica completata"); self.progress.setValue(100)
     def _diag_cleanup(self): self.diag_thread.deleteLater(); self.diag_thread=None; self.diag_worker=None; self.btn_diag.setEnabled(True)
@@ -336,4 +343,4 @@ class MonitoraggioDialog(QDialog):
     def create_cache(self):
         path,_=QFileDialog.getSaveFileName(self,"Crea cache locale",os.path.join(os.path.expanduser("~"),"monitoraggio_utr_cache.sqlite"),"SQLite (*.sqlite)")
         if path:
-            initialize_sqlite(path); QMessageBox.information(self,"Monitoraggio Davide","Cache locale inizializzata.")
+            initialize_sqlite(path); upsert_sources(path,SOURCE_CATALOG); self.cache_path=path; self.cache_path_edit.setText(path); self.settings.setValue("cache_sqlite",path); QMessageBox.information(self,"Monitoraggio Davide","Cache locale inizializzata e catalogo fonti registrato.")

@@ -8,7 +8,8 @@
 - [x] Selezione dell'ultima misura ARPAV numerica, ignorando gli intervalli ancora vuoti.
 - [ ] Gestione rete tramite strumenti QGIS, con proxy, SSL, annullamento e timeout.
 - [ ] Aggiornamento incrementale dei layer senza ricrearli.
-- [ ] Persistenza di diagnostica, qualità e freschezza del dato.
+- [x] Stato di freschezza del dato e persistenza della diagnostica in SQLite.
+- [ ] Indicatore di qualità specifico per ogni rete.
 - [ ] Migrazioni SQLite/PostGIS versionate.
 
 ## 0.8.x — Radar e serie temporali
@@ -35,4 +36,3 @@
 - ruoli, tracciamento delle modifiche e stato di validazione.
 
 Lo stato in tempo reale di mezzi di soccorso, linee elettriche guaste e celle telefoniche fuori servizio richiede feed autorizzati o una rete propria di dispositivi. La cartografia infrastrutturale pubblica non equivale alla conferma di un guasto.
-

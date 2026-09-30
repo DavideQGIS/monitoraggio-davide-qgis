@@ -1,4 +1,10 @@
-v0.7.0-alpha1 - in sviluppo
+v0.7.0-alpha2 - in sviluppo
+- Stato di freschezza Recente/Ritardato/Scaduto/Data assente e eta in minuti.
+- Campi di freschezza disponibili nella tabella e nel layer cartografico.
+- Gestione corretta dell'orario solare dichiarato da ARPAV.
+- Cache SQLite versionata con catalogo fonti e storico diagnostico.
+
+v0.7.0-alpha1 - 30/09/2026
 - Repository GitHub, test automatici e generazione del pacchetto ZIP.
 - Registro unico e tipizzato delle fonti.
 - Contratto comune per i nuovi connettori.

@@ -76,6 +76,7 @@ def parse_arpav_xml(payload: bytes, province: str = "Padova") -> Tuple[List[Dict
                     "value": number(latest_node.findtext("VM")) if latest_node is not None else None,
                     "observed_at": format_timestamp(latest_node.attrib.get("ISTANTE", "")) if latest_node is not None else "",
                     "state": "automatico non validato",
+                    "utc_offset_minutes": 60,
                 },
             })
             stations.append(item)

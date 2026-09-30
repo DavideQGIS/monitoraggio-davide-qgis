@@ -89,6 +89,7 @@ def replace_sensor_layer(stations, province, source="ARPA Lombardia"):
         QgsField("quota_m", QVariant.Double), QgsField("criticita", QVariant.String),
         QgsField("soglia_att", QVariant.Double), QgsField("soglia_pre", QVariant.Double),
         QgsField("soglia_all", QVariant.Double), QgsField("fonte_soglia", QVariant.String),
+        QgsField("freschezza", QVariant.String), QgsField("eta_min", QVariant.Int),
         QgsField("etichetta", QVariant.String),
     ])
     layer.updateFields()
@@ -102,9 +103,10 @@ def replace_sensor_layer(stations, province, source="ARPA Lombardia"):
         value_text = "n.d." if value is None else ("%.3f" % value).rstrip("0").rstrip(".")
         criticality = station.get("criticality", "Soglia assente")
         threshold = station.get("threshold") or {}
-        label = "%s · %s: %s %s · %s" % (
+        freshness = latest.get("freshness", "Data assente")
+        label = "%s · %s: %s %s · %s · %s" % (
             station.get("name", ""), station.get("sensor_type", ""),
-            value_text, station.get("unit", ""), criticality,
+            value_text, station.get("unit", ""), criticality, freshness,
         )
         feature = QgsFeature(layer.fields())
         feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(lon, lat)))
@@ -115,7 +117,7 @@ def replace_sensor_layer(stations, province, source="ARPA Lombardia"):
             latest.get("value"), latest.get("observed_at", ""), latest.get("state", ""),
             station.get("sensor_id", ""), station.get("elevation"), criticality,
             threshold.get("attention"), threshold.get("prealarm"), threshold.get("alarm"),
-            threshold.get("reference", ""), label,
+            threshold.get("reference", ""), freshness, latest.get("age_minutes"), label,
         ])
         features.append(feature)
     provider.addFeatures(features)
