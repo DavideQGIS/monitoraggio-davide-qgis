@@ -34,7 +34,7 @@ Le schede radar, Copernicus, dighe, neve e frane sono ancora parziali o predispo
 
 ## Sviluppo
 
-Il codice applicativo si trova in `Monitoraggio_Davide/`. La roadmap della serie `0.7.x` prevede la separazione fra connettori, servizi, database, gestione dei layer e interfaccia.
+Il codice applicativo si trova in `Monitoraggio_Davide/`. La pianificazione tecnica è descritta in [ROADMAP.md](ROADMAP.md). La serie `0.7.x` separa progressivamente connettori, servizi, database, gestione dei layer e interfaccia.
 
 I dati provenienti da servizi esterni restano soggetti a disponibilità, licenze, condizioni d'uso e formati stabiliti dagli enti titolari. Il plugin deve mostrare sempre fonte, orario del dato e stato di aggiornamento.
 

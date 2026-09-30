@@ -1,3 +1,11 @@
+v0.7.0-alpha1 - in sviluppo
+- Repository GitHub, test automatici e generazione del pacchetto ZIP.
+- Registro unico e tipizzato delle fonti.
+- Contratto comune per i nuovi connettori.
+- Parser ARPAV isolato e verificabile senza QGIS.
+- Correzione ARPAV: selezione dell'ultima misura numerica disponibile quando l'intervallo più recente è vuoto.
+- Normalizzazione delle date ARPAV e controllo del sistema di riferimento.
+
 v0.6.0 - 20/09/2026
 - Emilia-Romagna aggiunta come quarta area operativa.
 - Connettore ufficiale ARPAE per circa 265 idrometri.

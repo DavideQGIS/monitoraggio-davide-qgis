@@ -11,7 +11,7 @@ from qgis.PyQt.QtWidgets import (
     QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget
 )
 
-from .config import AREAS, DEFAULT_AREA, DEFAULT_PROVINCE, SENSOR_TYPES, SOURCE_CATALOG
+from .config import AREAS, DEFAULT_AREA, DEFAULT_PROVINCE, PLUGIN_VERSION, SENSOR_TYPES, SOURCE_CATALOG
 from .database import POSTGIS_NOTE, initialize_sqlite
 from .diagnostics import DiagnosticWorker
 from .connectors.arpa_lombardia import ArpaLombardiaWorker
@@ -68,7 +68,7 @@ class MonitoraggioDialog(QDialog):
             except Exception: self.thresholds = []
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self._auto_refresh)
-        self.setWindowTitle("Monitoraggio Davide · v0.6.0")
+        self.setWindowTitle("Monitoraggio Davide · v%s" % PLUGIN_VERSION)
         self.setWindowFlags(WINDOW | WINDOW_MINIMIZE | WINDOW_MAXIMIZE | WINDOW_CLOSE)
         self.setWindowModality(NON_MODAL)
         self.setMinimumSize(800, 560)
@@ -145,7 +145,7 @@ class MonitoraggioDialog(QDialog):
             if i == 1: self.card_measures = card
             if i == 2: self.card_alerts = card
         layout.addWidget(box)
-        note=QLabel("v0.6.0 · Reti regionali, ARPAE Emilia-Romagna, INGV e soglie documentate. I dati automatici recenti possono essere provvisori."); note.setWordWrap(True); layout.addWidget(note); layout.addStretch(1)
+        note=QLabel("v%s · Reti regionali, ARPAE Emilia-Romagna, INGV e soglie documentate. I dati automatici recenti possono essere provvisori." % PLUGIN_VERSION); note.setWordWrap(True); layout.addWidget(note); layout.addStretch(1)
         self.tabs.addTab(page,"Quadro operativo")
 
     def _sensors(self):
@@ -211,7 +211,7 @@ class MonitoraggioDialog(QDialog):
 
     def _province_changed(self, _text): self._update_geo_status()
     def _update_geo_status(self): self.status.setText("%s · %s"%(getattr(self,"current_area",DEFAULT_AREA),self.province.currentText() or DEFAULT_PROVINCE[DEFAULT_AREA]))
-    def _tick(self): self.live.setText("v0.6.0 · LIVE "+__import__("datetime").datetime.now().strftime("%H:%M:%S"))
+    def _tick(self): self.live.setText("v%s · LIVE %s" % (PLUGIN_VERSION, __import__("datetime").datetime.now().strftime("%H:%M:%S")))
 
     def open_live_view(self):
         try:

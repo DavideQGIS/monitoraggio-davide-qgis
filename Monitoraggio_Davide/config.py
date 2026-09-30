@@ -1,6 +1,9 @@
 from .core.source_registry import source_catalog
 
 
+PLUGIN_VERSION = "0.7.0-alpha1"
+
+
 AREAS = {
     "Lombardia": ["Bergamo", "Brescia", "Como", "Cremona", "Lecco", "Lodi", "Mantova", "Milano", "Monza e Brianza", "Pavia", "Sondrio", "Varese"],
     "Veneto": ["Belluno", "Padova", "Rovigo", "Treviso", "Venezia", "Verona", "Vicenza"],

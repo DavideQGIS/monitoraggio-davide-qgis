@@ -34,7 +34,7 @@ CONTENUTO DELLA PRIMA VERSIONE
 LIMITI v0.6.0
 - Il connettore ARPA carica l'ultimo dato disponibile, non ancora le serie storiche complete.
 - Google Hybrid richiede connessione Internet ed e soggetto alle condizioni del fornitore.
-- Le soglie sono predisposte ma non ancora operative.
+- Le soglie CSV e quelle ARPAE sono operative; per le altre reti servono fonti ufficiali documentate.
 - PostGIS e previsto, ma la connessione completa verra introdotta nella fase successiva.
 - Radar e prodotti Copernicus sono catalogati ma non ancora caricati come layer live.
 - Le soglie non vengono dedotte: devono essere importate da un atto o dataset ufficiale.

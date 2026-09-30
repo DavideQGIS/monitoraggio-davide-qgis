@@ -1,0 +1,38 @@
+# Roadmap
+
+## 0.7.x — Fondazioni affidabili
+
+- [x] Registro unico delle fonti con chiavi stabili.
+- [x] Contratto comune per i connettori.
+- [x] Parser ARPAV separato e testabile.
+- [x] Selezione dell'ultima misura ARPAV numerica, ignorando gli intervalli ancora vuoti.
+- [ ] Gestione rete tramite strumenti QGIS, con proxy, SSL, annullamento e timeout.
+- [ ] Aggiornamento incrementale dei layer senza ricrearli.
+- [ ] Persistenza di diagnostica, qualità e freschezza del dato.
+- [ ] Migrazioni SQLite/PostGIS versionate.
+
+## 0.8.x — Radar e serie temporali
+
+- layer radar con timestamp, legenda e cache;
+- sequenza temporale degli ultimi fotogrammi;
+- grafici di pioggia, livello, neve e portata;
+- stato `dato recente`, `dato ritardato`, `dato scaduto`;
+- soglie e allarmi documentati.
+
+## 0.9.x — Copernicus
+
+- catalogo CEMS Rapid Mapping;
+- prodotti flood GFM/EFAS;
+- prodotti incendi EFFIS;
+- integrazione opzionale con Copernicus Connect/STAC.
+
+## 1.0 — Sala operativa
+
+- PostGIS operativo;
+- mezzi autorizzati tramite Traccar;
+- eventi e segnalazioni territoriali;
+- infrastrutture elettriche e telecomunicazioni;
+- ruoli, tracciamento delle modifiche e stato di validazione.
+
+Lo stato in tempo reale di mezzi di soccorso, linee elettriche guaste e celle telefoniche fuori servizio richiede feed autorizzati o una rete propria di dispositivi. La cartografia infrastrutturale pubblica non equivale alla conferma di un guasto.
+
