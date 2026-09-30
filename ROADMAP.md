@@ -6,7 +6,11 @@
 - [x] Contratto comune per i connettori.
 - [x] Parser ARPAV separato e testabile.
 - [x] Selezione dell'ultima misura ARPAV numerica, ignorando gli intervalli ancora vuoti.
-- [ ] Gestione rete tramite strumenti QGIS, con proxy, SSL, annullamento e timeout.
+- [x] Gestione rete tramite strumenti QGIS, con proxy, SSL e annullamento.
+  - [x] ARPAV trasferito su `QgsBlockingNetworkRequest` thread-safe.
+  - [x] ARPA Lombardia, INGV e ARPAE Emilia-Romagna trasferiti sulla rete QGIS.
+  - [x] Diagnostica trasferita sulla rete QGIS.
+  - [x] Meteotrentino trasferito sulla rete QGIS.
 - [ ] Aggiornamento incrementale dei layer senza ricrearli.
 - [x] Stato di freschezza del dato e persistenza della diagnostica in SQLite.
 - [ ] Indicatore di qualità specifico per ogni rete.

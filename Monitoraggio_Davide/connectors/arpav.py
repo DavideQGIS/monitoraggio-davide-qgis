@@ -1,7 +1,7 @@
-import urllib.request
 from qgis.PyQt.QtCore import QObject, pyqtSignal
 
 from ..core.parsers.arpav import parse_arpav_xml
+from .http import get_bytes
 
 
 ARPAV_XML = "https://www.arpa.veneto.it/api/risorse/data-meteo/xml/Ultime48ore.xml"
@@ -19,9 +19,7 @@ class ArpavWorker(QObject):
     def run(self):
         try:
             self.progress.emit(10, "Scarico rete idrometeorologica ARPAV")
-            request = urllib.request.Request(ARPAV_XML, headers={"User-Agent": "Monitoraggio-Davide/0.4"})
-            with urllib.request.urlopen(request, timeout=60) as response:
-                payload = response.read()
+            payload = get_bytes(ARPAV_XML, {"Accept": "application/xml,text/xml"})
             self.progress.emit(75, "Normalizzazione dati ARPAV")
             stations, summary = parse_arpav_xml(payload, self.province)
             self.progress.emit(100, "ARPAV completato")

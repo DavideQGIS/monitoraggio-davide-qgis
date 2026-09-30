@@ -1,9 +1,8 @@
-import socket
 import time
-import urllib.error
-import urllib.request
 
 from qgis.PyQt.QtCore import QObject, pyqtSignal
+
+from .connectors.http import NetworkRequestError, get_bytes
 
 
 class DiagnosticWorker(QObject):
@@ -24,22 +23,16 @@ class DiagnosticWorker(QObject):
             status, detail = "OK", "Raggiungibile"
             code = ""
             try:
-                req = urllib.request.Request(source["url"], headers={"User-Agent": "Monitoraggio-UTR/0.1"})
-                with urllib.request.urlopen(req, timeout=self.timeout) as response:
-                    code = str(getattr(response, "status", ""))
-                    response.read(256)
+                get_bytes(source["url"])
                 ok += 1
-            except urllib.error.HTTPError as exc:
-                code = str(exc.code)
-                if exc.code in (401, 403):
+            except NetworkRequestError as exc:
+                code = str(exc.status_code or "")
+                if exc.status_code in (401, 403):
                     status, detail = "AVVISO", "Servizio attivo: autenticazione richiesta"
                     warnings += 1
                 else:
                     status, detail = "ERRORE", str(exc)
                     errors += 1
-            except (urllib.error.URLError, socket.timeout, TimeoutError) as exc:
-                status, detail = "ERRORE", str(exc)
-                errors += 1
             except Exception as exc:
                 status, detail = "ERRORE", "%s: %s" % (type(exc).__name__, exc)
                 errors += 1

@@ -1,9 +1,10 @@
 import datetime
 import json
 import urllib.parse
-import urllib.request
 
 from qgis.PyQt.QtCore import QObject, pyqtSignal
+
+from .http import get_bytes
 
 
 INGV_API = "https://webservices.ingv.it/fdsnws/event/1/query"
@@ -27,9 +28,7 @@ class IngvWorker(QObject):
                 "minlatitude": 44.0, "maxlatitude": 47.7,
                 "minlongitude": 8.0, "maxlongitude": 14.2,
             })
-            request = urllib.request.Request(INGV_API + "?" + params, headers={"User-Agent": "Monitoraggio-Davide/0.4"})
-            with urllib.request.urlopen(request, timeout=45) as response:
-                payload = json.loads(response.read().decode("utf-8"))
+            payload = json.loads(get_bytes(INGV_API + "?" + params).decode("utf-8"))
             events = []
             for feature in payload.get("features", []):
                 props = feature.get("properties") or {}

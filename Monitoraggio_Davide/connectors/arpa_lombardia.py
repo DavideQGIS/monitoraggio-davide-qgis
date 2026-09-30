@@ -1,8 +1,9 @@
 import json
 import urllib.parse
-import urllib.request
 
 from qgis.PyQt.QtCore import QObject, pyqtSignal
+
+from .http import get_bytes
 
 
 STATIONS_API = "https://www.dati.lombardia.it/resource/nf78-nj6b.json"
@@ -60,9 +61,8 @@ def normalize_measure(row):
 def fetch_json(url, params=None, timeout=30):
     query = urllib.parse.urlencode(params or {}, safe=",()' ")
     full_url = url + ("?" + query if query else "")
-    request = urllib.request.Request(full_url, headers={"Accept": "application/json", "User-Agent": "Monitoraggio-UTR/0.2"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        return json.loads(response.read().decode("utf-8", errors="replace"))
+    payload = get_bytes(full_url, headers={"Accept": "application/json"})
+    return json.loads(payload.decode("utf-8", errors="replace"))
 
 
 def province_codes(province):

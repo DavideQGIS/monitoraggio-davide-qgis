@@ -1,9 +1,10 @@
 import concurrent.futures
 import json
-import urllib.request
 import xml.etree.ElementTree as ET
 
 from qgis.PyQt.QtCore import QObject, pyqtSignal
+
+from .http import get_bytes, post_bytes
 
 
 LIST_URL = "https://dati.meteotrentino.it/service.asmx/listaStazioniGeoJson"
@@ -18,9 +19,7 @@ def _number(value):
 
 
 def _fetch(url, data=None, timeout=35):
-    request = urllib.request.Request(url, data=data, headers={"User-Agent": "Monitoraggio-Davide/0.4"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        return response.read()
+    return post_bytes(url, data) if data is not None else get_bytes(url)
 
 
 def _latest_station(feature):

@@ -1,9 +1,10 @@
 import json
 import datetime
 import time
-import urllib.request
 
 from qgis.PyQt.QtCore import QObject, pyqtSignal
+
+from .http import get_bytes
 
 
 ARPAE_HYDRO = "https://allertameteo.regione.emilia-romagna.it/o/api/allerta/get-sensor-values-no-time?variabile=254,0,0/1,-,-,-/B13215"
@@ -27,14 +28,10 @@ class ArpaeEmiliaRomagnaWorker(QObject):
     def run(self):
         try:
             self.progress.emit(10, "Scarico idrometri ARPAE Emilia-Romagna")
-            request = urllib.request.Request(ARPAE_HYDRO, headers={"User-Agent": "Monitoraggio-Davide/0.6"})
-            with urllib.request.urlopen(request, timeout=60) as response:
-                initial = json.loads(response.read().decode("utf-8"))
+            initial = json.loads(get_bytes(ARPAE_HYDRO).decode("utf-8"))
             offset = _number(initial[0].get("time")) if initial and isinstance(initial[0], dict) else 0
             instant_ms = int(time.time() * 1000 + (offset or 0))
-            timed_request = urllib.request.Request(ARPAE_HYDRO_TIME + str(instant_ms), headers={"User-Agent": "Monitoraggio-Davide/0.6"})
-            with urllib.request.urlopen(timed_request, timeout=60) as response:
-                payload = json.loads(response.read().decode("utf-8"))
+            payload = json.loads(get_bytes(ARPAE_HYDRO_TIME + str(instant_ms)).decode("utf-8"))
             observed_at = datetime.datetime.fromtimestamp(instant_ms / 1000.0).astimezone().isoformat(timespec="minutes")
             stations = []
             for index, row in enumerate(payload, 1):
