@@ -1,3 +1,10 @@
+v0.7.0-alpha6 - 01/10/2026
+- Correzione creazione layer sensori su QGIS 4/PyQt6: tipi QgsField compatibili con QMetaType.
+- ARPA Lombardia: riconoscimento del campo ufficiale `unit_dimisura` per le unita di misura.
+- Verifica del parser sul feed reale ARPAV: Padova restituisce stazioni, sensori, valori e coordinate EPSG:4258.
+- Cambio area/provincia con ricaricamento automatico, anche se il caricamento precedente e ancora in corso.
+- Il filtro "Tutta la regione" non viene piu sostituito impropriamente con Brescia.
+
 v0.7.0-alpha5 - 01/10/2026
 - Nuova scheda Neve e valanghe con caricamento del bollettino ufficiale AINEVA in formato open data CAAML.
 - Sintesi di validita, grado massimo di pericolo, livelli, problemi valanghivi e riferimenti territoriali.
