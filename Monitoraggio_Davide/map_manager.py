@@ -11,6 +11,8 @@ from .qt_compat import FIELD_DOUBLE, FIELD_INT, FIELD_STRING
 GROUP_NAME = "Monitoraggio Davide"
 BASEMAP_NAME = "Google Hybrid · Monitoraggio Davide"
 SENSORS_PREFIX = "Sensori monitoraggio"
+RIP_LAYER_NAME = "Reticolo Idrico Principale Lombardia · DGR XII/3668"
+RIP_WMS_URL = "https://www.cartografia.servizirl.it/arcgis1/services/territorio/ReticoloIdrografico_RIRU/MapServer/WMSServer"
 
 
 def ensure_group():
@@ -37,6 +39,29 @@ def ensure_google_hybrid():
     layer.setCustomProperty("monitoraggio_utr", True)
     project.addMapLayer(layer, False)
     ensure_group().addLayer(layer)
+    return layer
+
+
+def set_lombardia_rip(enabled=True):
+    """Aggiunge o rimuove il RIP ufficiale Lombardia (layer 7 del RIRU)."""
+    project = QgsProject.instance()
+    existing = [layer for layer in project.mapLayers().values() if layer.name() == RIP_LAYER_NAME]
+    if not enabled:
+        for layer in existing:
+            project.removeMapLayer(layer.id())
+        return None
+    if existing:
+        return existing[0]
+
+    uri = "url=%s&layers=7&styles=&format=image/png&crs=EPSG:3857&featureCount=10" % RIP_WMS_URL
+    layer = QgsRasterLayer(uri, RIP_LAYER_NAME, "wms")
+    if not layer.isValid():
+        raise RuntimeError("QGIS non riesce a inizializzare il WMS del Reticolo Idrico Principale Lombardia.")
+    layer.setCustomProperty("monitoraggio_utr", True)
+    layer.setCustomProperty("monitoraggio_utr/source", "RIRU Lombardia")
+    layer.setCustomProperty("monitoraggio_utr/type", "reticolo_idrico_principale")
+    project.addMapLayer(layer, False)
+    ensure_group().insertLayer(0, layer)
     return layer
 
 
