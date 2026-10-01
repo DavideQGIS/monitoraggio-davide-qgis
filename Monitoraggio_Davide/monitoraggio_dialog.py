@@ -21,7 +21,7 @@ from .connectors.ingv import IngvWorker
 from .connectors.meteotrentino import MeteotrentinoWorker
 from .connectors.arpae_emilia_romagna import ArpaeEmiliaRomagnaWorker
 from .connectors.aineva import AinevaWorker
-from .map_manager import ensure_google_hybrid, replace_earthquake_layer, replace_sensor_layer
+from .map_manager import ensure_google_hybrid, replace_earthquake_layer, replace_sensor_layer, set_lombardia_rip
 from .qt_compat import (
     ALIGN_CENTER, HEADER_CONTENTS, HEADER_STRETCH, NON_MODAL,
     NO_EDIT_TRIGGERS, WINDOW, WINDOW_CLOSE, WINDOW_MAXIMIZE, WINDOW_MINIMIZE,
@@ -103,11 +103,13 @@ class MonitoraggioDialog(QDialog):
         header.addWidget(self.phase,1,0); header.addWidget(self.progress,1,1); header.addWidget(self.source_status,1,2); header.addWidget(self.btn_detail,1,3)
         root.addLayout(header)
 
-        geo = QHBoxLayout(); geo.addWidget(QLabel("AREA:"))
+        geo = QHBoxLayout(); geo.addWidget(QLabel("ZONA MONITORATA:"))
         self.area_group = QButtonGroup(self); self.area_group.setExclusive(True); self.area_buttons = {}
         for area in AREAS:
-            button = QPushButton(area.upper()); button.setCheckable(True); self.area_group.addButton(button); self.area_buttons[area] = button
-            button.clicked.connect(lambda checked=False, a=area: self.set_area(a)); geo.addWidget(button)
+            button = QCheckBox(area)
+            button.setToolTip("Seleziona %s come zona operativa" % area)
+            self.area_group.addButton(button); self.area_buttons[area] = button
+            button.clicked.connect(lambda checked=False, a=area: self.set_area(a) if checked else None); geo.addWidget(button)
         geo.addSpacing(10); geo.addWidget(QLabel("Provincia:")); self.province = QComboBox(); self.province.currentTextChanged.connect(self._province_changed); geo.addWidget(self.province)
         self.btn_brescia = QPushButton("BRESCIA"); self.btn_brescia.setObjectName("quickButton"); self.btn_brescia.clicked.connect(lambda: self.set_area("Lombardia", "Brescia")); geo.addWidget(self.btn_brescia)
         self.btn_padova = QPushButton("PADOVA"); self.btn_padova.setObjectName("quickButton"); self.btn_padova.clicked.connect(lambda: self.set_area("Veneto", "Padova")); geo.addWidget(self.btn_padova)
@@ -122,6 +124,11 @@ class MonitoraggioDialog(QDialog):
         self.auto_refresh.setChecked(True)
         self.auto_refresh.toggled.connect(self._toggle_refresh)
         live_row.addWidget(self.auto_refresh)
+        self.rip_checkbox = QCheckBox("Reticolo Idrico Principale Lombardia")
+        self.rip_checkbox.setChecked(True)
+        self.rip_checkbox.setToolTip("RIP ufficiale Regione Lombardia · Allegato A D.G.R. XII/3668/2024")
+        self.rip_checkbox.toggled.connect(self._toggle_rip)
+        live_row.addWidget(self.rip_checkbox)
         live_row.addWidget(QLabel("Ogni"))
         self.refresh_minutes = QSpinBox(); self.refresh_minutes.setRange(5, 60); self.refresh_minutes.setValue(10); self.refresh_minutes.setSuffix(" min")
         self.refresh_minutes.valueChanged.connect(self._toggle_refresh)
@@ -253,6 +260,7 @@ class MonitoraggioDialog(QDialog):
     def open_live_view(self):
         try:
             ensure_google_hybrid()
+            set_lombardia_rip(self.rip_checkbox.isChecked())
             self._toggle_refresh()
             if self.current_area in ("Lombardia", "Veneto", "Trentino", "Emilia-Romagna") and self.arpa_thread is None:
                 self.load_arpa()
@@ -261,6 +269,15 @@ class MonitoraggioDialog(QDialog):
         except Exception as exc:
             self.phase.setText("Errore basemap")
             QMessageBox.warning(self, "Monitoraggio Davide · Mappa", str(exc))
+
+    def _toggle_rip(self, enabled):
+        try:
+            layer = set_lombardia_rip(enabled)
+            self.phase.setText("Reticolo Idrico Principale attivo" if layer else "Reticolo Idrico Principale disattivato")
+        except Exception as exc:
+            self.rip_checkbox.blockSignals(True); self.rip_checkbox.setChecked(False); self.rip_checkbox.blockSignals(False)
+            self.phase.setText("Errore Reticolo Idrico Principale")
+            QMessageBox.warning(self, "Monitoraggio Davide · RIP Lombardia", str(exc))
 
     def _toggle_refresh(self, *_args):
         if self.auto_refresh.isChecked():
