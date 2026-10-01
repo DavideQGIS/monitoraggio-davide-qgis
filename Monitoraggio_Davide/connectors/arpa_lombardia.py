@@ -41,7 +41,8 @@ def normalize_station(row):
         "municipality": str(_value(row, "comune", "municipality")),
         "province": str(_value(row, "provincia", "province", "siglaprovincia")),
         "sensor_type": str(_value(row, "tipologia", "tiposensore", "sensore", "sensor_type")),
-        "unit": str(_value(row, "unitamisura", "unit", "unita")),
+        # Il dataset ufficiale espone attualmente il refuso `unit_dimisura`.
+        "unit": str(_value(row, "unit_dimisura", "unitamisura", "unit", "unita")),
         "elevation": _float(_value(row, "quota", "elevation", "altitudine")),
         "longitude": lon,
         "latitude": lat,
@@ -66,6 +67,8 @@ def fetch_json(url, params=None, timeout=30):
 
 
 def province_codes(province):
+    if not province:
+        return ()
     return {"Brescia": ("BS", "BRESCIA"), "Padova": ("PD", "PADOVA"), "Trento": ("TN", "TRENTO")}.get(province, (province.upper(),))
 
 
@@ -86,8 +89,8 @@ class ArpaLombardiaWorker(QObject):
             raw = fetch_json(STATIONS_API, {"$limit": self.station_limit})
             stations = [normalize_station(item) for item in raw]
             codes = province_codes(self.province)
-            selected = [s for s in stations if not s["province"] or s["province"].strip().upper() in codes]
-            if not selected:
+            selected = stations if not codes else [s for s in stations if not s["province"] or s["province"].strip().upper() in codes]
+            if not selected and self.province:
                 selected = [s for s in stations if self.province.upper() in (s["municipality"] + " " + s["name"]).upper()]
             sensor_ids = sorted({s["sensor_id"] for s in selected if s["sensor_id"]})
             self.progress.emit(45, "%d sensori trovati · scarico ultimi dati" % len(sensor_ids))
