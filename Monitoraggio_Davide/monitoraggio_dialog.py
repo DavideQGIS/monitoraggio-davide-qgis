@@ -20,6 +20,7 @@ from .connectors.arpav import ArpavWorker
 from .connectors.ingv import IngvWorker
 from .connectors.meteotrentino import MeteotrentinoWorker
 from .connectors.arpae_emilia_romagna import ArpaeEmiliaRomagnaWorker
+from .connectors.aineva import AinevaWorker
 from .map_manager import ensure_google_hybrid, replace_earthquake_layer, replace_sensor_layer
 from .qt_compat import (
     ALIGN_CENTER, HEADER_CONTENTS, HEADER_STRETCH, NON_MODAL,
@@ -61,6 +62,8 @@ class MonitoraggioDialog(QDialog):
         self.arpa_worker = None
         self.ingv_thread = None
         self.ingv_worker = None
+        self.aineva_thread = None
+        self.aineva_worker = None
         self.live_layer = None
         self.thresholds = []
         self.threshold_path = self.settings.value("threshold_csv", "", type=str)
@@ -129,7 +132,7 @@ class MonitoraggioDialog(QDialog):
         self.tabs = QTabWidget(); self.tabs.setUsesScrollButtons(True); self.tabs.tabBar().setExpanding(False); root.addWidget(self.tabs,1)
         self._dashboard(); self._sensors(); self._meteo_radar()
         self._placeholder("Fiumi e dighe", "Idrometri, portate, invasi, scarichi e serie temporali.")
-        self._placeholder("Neve", "Sensori nivometrici e nivopluviometrici, neve fresca, SWE e fusione.")
+        self._snow()
         self._placeholder("Frane", "Piezometri, inclinometri, estensimetri, GNSS e stato dei sistemi.")
         self._seismic()
         self._placeholder("Copernicus", "CEMS Rapid Mapping, GFM/EFAS, EFFIS e immagini Sentinel.")
@@ -178,6 +181,18 @@ class MonitoraggioDialog(QDialog):
         self.ingv_table=QTableWidget(0,6); self.ingv_table.setHorizontalHeaderLabels(["Data/ora","Magnitudo","Tipo","Profondita km","Localita","ID evento"]); self.ingv_table.verticalHeader().setVisible(False); self.ingv_table.setEditTriggers(NO_EDIT_TRIGGERS); self.ingv_table.setAlternatingRowColors(True)
         for col in (0,1,2,3,5): self.ingv_table.horizontalHeader().setSectionResizeMode(col,HEADER_CONTENTS)
         self.ingv_table.horizontalHeader().setSectionResizeMode(4,HEADER_STRETCH); layout.addWidget(self.ingv_table,1); self.tabs.addTab(page,"Sismica")
+
+    def _snow(self):
+        page=QWidget(); layout=QVBoxLayout(page)
+        actions=QHBoxLayout(); self.btn_aineva=QPushButton("CARICA BOLLETTINO AINEVA"); self.btn_aineva.setObjectName("primaryButton"); self.btn_aineva.clicked.connect(self.load_aineva); actions.addWidget(self.btn_aineva)
+        open_button=QPushButton("APRI BOLLETTINO UFFICIALE"); open_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://bollettini.aineva.it/bulletin/latest"))); actions.addWidget(open_button)
+        self.aineva_label=QLabel("Bollettino stagionale neve e valanghe · open data CAAML"); actions.addWidget(self.aineva_label,1); layout.addLayout(actions)
+        self.aineva_table=QTableWidget(0,7); self.aineva_table.setHorizontalHeaderLabels(["Pubblicato","Valido da","Valido a","Pericolo max","Livelli","Problemi valanghivi","Aree"]); self.aineva_table.verticalHeader().setVisible(False); self.aineva_table.setEditTriggers(NO_EDIT_TRIGGERS)
+        for col in range(5): self.aineva_table.horizontalHeader().setSectionResizeMode(col,HEADER_CONTENTS)
+        self.aineva_table.horizontalHeader().setSectionResizeMode(5,HEADER_STRETCH); self.aineva_table.horizontalHeader().setSectionResizeMode(6,HEADER_STRETCH)
+        layout.addWidget(self.aineva_table)
+        note=QLabel("I sensori nivometrici e nivopluviometrici delle reti regionali restano disponibili nella scheda Meteo e radar. Il bollettino AINEVA esprime un pericolo per zone, non per il singolo pendio."); note.setWordWrap(True); layout.addWidget(note); layout.addStretch(1)
+        self.tabs.addTab(page,"Neve e valanghe")
 
     def _thresholds_page(self):
         page=QWidget(); layout=QVBoxLayout(page)
@@ -298,6 +313,27 @@ class MonitoraggioDialog(QDialog):
         self.ingv_label.setText(message); self.phase.setText("Errore INGV")
 
     def _ingv_cleanup(self): self.ingv_thread.deleteLater(); self.ingv_thread=None; self.ingv_worker=None; self.btn_ingv.setEnabled(True)
+
+    def load_aineva(self):
+        if self.aineva_thread: return
+        self.btn_aineva.setEnabled(False); self.aineva_label.setText("Scarico bollettino AINEVA..."); self.aineva_table.setRowCount(0)
+        self.aineva_thread=QThread(self); self.aineva_worker=AinevaWorker(); self.aineva_worker.moveToThread(self.aineva_thread); self.aineva_thread.started.connect(self.aineva_worker.run); self.aineva_worker.progress.connect(self._diag_progress); self.aineva_worker.finished.connect(self._aineva_finished); self.aineva_worker.failed.connect(self._aineva_failed); self.aineva_worker.finished.connect(self.aineva_thread.quit); self.aineva_worker.failed.connect(self.aineva_thread.quit); self.aineva_thread.finished.connect(self._aineva_cleanup); self.aineva_thread.start()
+
+    def _aineva_finished(self, bulletin):
+        level=bulletin.get("max_danger")
+        if level is None:
+            self.aineva_label.setText("Nessun bollettino giornaliero disponibile · possibile periodo fuori stagione")
+        else:
+            names={1:"Debole",2:"Moderato",3:"Marcato",4:"Forte",5:"Molto forte"}; self.aineva_table.setRowCount(1)
+            values=(bulletin.get("published_at",""),bulletin.get("valid_from",""),bulletin.get("valid_to",""),"%s · %s"%(level,names.get(level,"")),", ".join(str(item) for item in bulletin.get("danger_levels",[])),", ".join(bulletin.get("problems",[])),", ".join(bulletin.get("regions",[])))
+            for col,value in enumerate(values): self.aineva_table.setItem(0,col,QTableWidgetItem(str(value)))
+            self.aineva_label.setText("Bollettino AINEVA caricato · pericolo massimo %s"%level)
+        self.phase.setText("AINEVA completato"); self.progress.setValue(100)
+
+    def _aineva_failed(self, message):
+        self.aineva_label.setText(message); self.phase.setText("Errore AINEVA")
+
+    def _aineva_cleanup(self): self.aineva_thread.deleteLater(); self.aineva_thread=None; self.aineva_worker=None; self.btn_aineva.setEnabled(True)
 
     def run_diagnostics(self):
         if self.diag_thread: return

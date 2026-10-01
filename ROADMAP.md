@@ -19,6 +19,11 @@
 
 ## 0.8.x — Radar e serie temporali
 
+- [x] Fonte AINEVA CAAML e scheda neve/valanghe operative.
+- [ ] Poligoni GIS delle micro-aree AINEVA tematizzati per grado di pericolo.
+- [ ] Campi neve Meteotrentino e dettaglio nivometri regionali.
+- [ ] Anagrafica grandi dighe SIDRO e livelli/scarichi tramite feed autorizzati.
+- [ ] Aree e reti strumentali CRMFD, distinguendo dati pubblici e riservati.
 - layer radar con timestamp, legenda e cache;
 - sequenza temporale degli ultimi fotogrammi;
 - grafici di pioggia, livello, neve e portata;
