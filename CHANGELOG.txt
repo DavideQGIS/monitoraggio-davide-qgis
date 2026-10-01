@@ -1,3 +1,9 @@
+v0.7.0-alpha9 - 01/10/2026
+- Selezione multipla delle aree con spunta Tutte.
+- Caricamento sequenziale delle reti regionali selezionate.
+- Layer QGIS etichettato con 29 capoluoghi provinciali/metropolitani.
+- Filtro Provincia / capoluogo attivo quando e selezionata una sola area.
+
 v0.7.0-alpha8 - 01/10/2026
 - Nuova pagina iniziale Sala Operativa ispirata al sistema CFMR Lombardia.
 - Download reale dell'ultimo composito radar ARPA Lombardia in GeoTIFF compresso e caricamento automatico in mappa.
