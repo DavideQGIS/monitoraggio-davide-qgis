@@ -5,7 +5,7 @@ from qgis.core import (
     QgsRendererCategory, QgsTextBufferSettings, QgsTextFormat, QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
-from qgis.PyQt.QtCore import QVariant
+from .qt_compat import FIELD_DOUBLE, FIELD_INT, FIELD_STRING
 
 
 GROUP_NAME = "Monitoraggio Davide"
@@ -81,16 +81,16 @@ def replace_sensor_layer(stations, province, source="ARPA Lombardia"):
     layer = QgsVectorLayer("Point?crs=EPSG:4326", "Sensori %s · %s" % (source, province), "memory")
     provider = layer.dataProvider()
     provider.addAttributes([
-        QgsField("stazione", QVariant.String), QgsField("comune", QVariant.String),
-        QgsField("provincia", QVariant.String), QgsField("sensore", QVariant.String),
-        QgsField("famiglia", QVariant.String), QgsField("unita", QVariant.String),
-        QgsField("valore", QVariant.Double), QgsField("data_ora", QVariant.String),
-        QgsField("stato", QVariant.String), QgsField("id_sensore", QVariant.String),
-        QgsField("quota_m", QVariant.Double), QgsField("criticita", QVariant.String),
-        QgsField("soglia_att", QVariant.Double), QgsField("soglia_pre", QVariant.Double),
-        QgsField("soglia_all", QVariant.Double), QgsField("fonte_soglia", QVariant.String),
-        QgsField("freschezza", QVariant.String), QgsField("eta_min", QVariant.Int),
-        QgsField("etichetta", QVariant.String),
+        QgsField("stazione", FIELD_STRING), QgsField("comune", FIELD_STRING),
+        QgsField("provincia", FIELD_STRING), QgsField("sensore", FIELD_STRING),
+        QgsField("famiglia", FIELD_STRING), QgsField("unita", FIELD_STRING),
+        QgsField("valore", FIELD_DOUBLE), QgsField("data_ora", FIELD_STRING),
+        QgsField("stato", FIELD_STRING), QgsField("id_sensore", FIELD_STRING),
+        QgsField("quota_m", FIELD_DOUBLE), QgsField("criticita", FIELD_STRING),
+        QgsField("soglia_att", FIELD_DOUBLE), QgsField("soglia_pre", FIELD_DOUBLE),
+        QgsField("soglia_all", FIELD_DOUBLE), QgsField("fonte_soglia", FIELD_STRING),
+        QgsField("freschezza", FIELD_STRING), QgsField("eta_min", FIELD_INT),
+        QgsField("etichetta", FIELD_STRING),
     ])
     layer.updateFields()
     features = []
@@ -154,9 +154,9 @@ def replace_earthquake_layer(events):
     layer = QgsVectorLayer("Point?crs=EPSG:4326", name, "memory")
     provider = layer.dataProvider()
     provider.addAttributes([
-        QgsField("evento", QVariant.String), QgsField("data_ora", QVariant.String),
-        QgsField("magnitudo", QVariant.Double), QgsField("tipo_mag", QVariant.String),
-        QgsField("prof_km", QVariant.Double), QgsField("localita", QVariant.String),
+        QgsField("evento", FIELD_STRING), QgsField("data_ora", FIELD_STRING),
+        QgsField("magnitudo", FIELD_DOUBLE), QgsField("tipo_mag", FIELD_STRING),
+        QgsField("prof_km", FIELD_DOUBLE), QgsField("localita", FIELD_STRING),
     ])
     layer.updateFields()
     features = []
