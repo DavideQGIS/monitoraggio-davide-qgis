@@ -1,3 +1,7 @@
+v0.7.0-alpha4 - 01/10/2026
+- Corretto il falso errore di rete su QGIS 4/PyQt6: le risposte HTTP 200 non vengono piu classificate come errore.
+- Confronto esplicito con QNetworkReply.NoError compatibile con enum Qt5 e Qt6.
+
 v0.7.0-alpha3 - 30/09/2026
 - Tutti i connettori live usano la rete nativa QGIS, compatibile con proxy e autenticazione dell'applicazione.
 - Diagnostica migrata sulla stessa rete e classificazione separata dei servizi protetti HTTP 401/403.

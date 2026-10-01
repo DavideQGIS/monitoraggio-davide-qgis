@@ -1,7 +1,7 @@
 from typing import Dict, Optional
 
 from qgis.PyQt.QtCore import QByteArray, QUrl
-from qgis.PyQt.QtNetwork import QNetworkRequest
+from qgis.PyQt.QtNetwork import QNetworkReply, QNetworkRequest
 from qgis.core import QgsBlockingNetworkRequest, QgsFeedback
 
 
@@ -21,6 +21,12 @@ def _http_status_attribute():
     if hasattr(QNetworkRequest, "HttpStatusCodeAttribute"):
         return QNetworkRequest.HttpStatusCodeAttribute
     return QNetworkRequest.Attribute.HttpStatusCodeAttribute
+
+
+def _network_no_error_value():
+    if hasattr(QNetworkReply, "NoError"):
+        return QNetworkReply.NoError
+    return QNetworkReply.NetworkError.NoError
 
 
 def get_bytes(
@@ -68,6 +74,6 @@ def _request_bytes(
     if error_code != _no_error_value():
         raise NetworkRequestError(blocking.errorMessage() or "Errore di rete QGIS", status_code)
 
-    if reply.error():
+    if reply.error() != _network_no_error_value():
         raise NetworkRequestError(reply.errorString() or "Risposta di rete QGIS non valida", status_code)
     return bytes(reply.content())
