@@ -20,12 +20,16 @@
 ## 0.8.x — Radar e serie temporali
 
 - [x] Fonte AINEVA CAAML e scheda neve/valanghe operative.
+- [x] Primo quadro Sala Operativa con accessi CFMR, allertaLOM, BMP, LIRIS, radarLOM e PVR.
+- [x] Download e sostituzione automatica dell'ultimo GeoTIFF radar ARPA Lombardia.
+- [x] Metadati radar nella cache SQLite e pulizia dei raster temporanei precedenti.
 - [ ] Poligoni GIS delle micro-aree AINEVA tematizzati per grado di pericolo.
 - [ ] Campi neve Meteotrentino e dettaglio nivometri regionali.
 - [ ] Anagrafica grandi dighe SIDRO e livelli/scarichi tramite feed autorizzati.
 - [ ] Aree e reti strumentali CRMFD, distinguendo dati pubblici e riservati.
-- layer radar con timestamp, legenda e cache;
-- sequenza temporale degli ultimi fotogrammi;
+- [ ] Legenda radar dBZ e controllo trasparenza.
+- [ ] Sequenza temporale degli ultimi fotogrammi;
+- [ ] Lettura strutturata delle allerte allertaLOM e dell'ultimo BMP;
 - grafici di pioggia, livello, neve e portata;
 - stato `dato recente`, `dato ritardato`, `dato scaduto`;
 - soglie e allarmi documentati.
