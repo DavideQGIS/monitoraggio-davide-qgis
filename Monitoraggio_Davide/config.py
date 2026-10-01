@@ -1,7 +1,7 @@
 from .core.source_registry import source_catalog
 
 
-PLUGIN_VERSION = "0.7.0-alpha5"
+PLUGIN_VERSION = "0.7.0-alpha6"
 
 
 AREAS = {
