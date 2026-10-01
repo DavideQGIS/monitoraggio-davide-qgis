@@ -60,6 +60,7 @@ class MonitoraggioDialog(QDialog):
         self.diag_worker = None
         self.arpa_thread = None
         self.arpa_worker = None
+        self._pending_regional_reload = False
         self.ingv_thread = None
         self.ingv_worker = None
         self.aineva_thread = None
@@ -225,9 +226,27 @@ class MonitoraggioDialog(QDialog):
         layout.addWidget(src); layout.addStretch(1); self.tabs.addTab(page,"Impostazioni")
 
     def set_area(self, area, province=None):
+        previous_area = getattr(self, "current_area", None)
+        previous_province = self.province.currentText() if hasattr(self, "province") else ""
         self.area_buttons[area].setChecked(True); self.province.blockSignals(True); self.province.clear(); self.province.addItem("Tutta la regione" if area != "Trentino" else "Tutta la provincia"); self.province.addItems(AREAS[area]); target=province or DEFAULT_PROVINCE[area]; index=self.province.findText(target); self.province.setCurrentIndex(max(0,index)); self.province.blockSignals(False); self.current_area=area; self._update_geo_status()
+        if previous_area is not None and (previous_area != area or previous_province != self.province.currentText()):
+            self._queue_regional_reload()
 
-    def _province_changed(self, _text): self._update_geo_status()
+    def _province_changed(self, _text):
+        self._update_geo_status()
+        if getattr(self, "current_area", None) is not None:
+            self._queue_regional_reload()
+
+    def _queue_regional_reload(self):
+        self._pending_regional_reload = True
+        self.arpa_label.setText("Cambio area in corso · preparo la rete %s" % self.current_area)
+        if self.arpa_thread is None:
+            QTimer.singleShot(0, self._run_pending_regional_reload)
+
+    def _run_pending_regional_reload(self):
+        if self._pending_regional_reload and self.arpa_thread is None:
+            self._pending_regional_reload = False
+            self.load_arpa(silent=True)
     def _update_geo_status(self): self.status.setText("%s · %s"%(getattr(self,"current_area",DEFAULT_AREA),self.province.currentText() or DEFAULT_PROVINCE[DEFAULT_AREA]))
     def _tick(self): self.live.setText("v%s · LIVE %s" % (PLUGIN_VERSION, __import__("datetime").datetime.now().strftime("%H:%M:%S")))
 
@@ -260,7 +279,7 @@ class MonitoraggioDialog(QDialog):
         area = getattr(self,"current_area",DEFAULT_AREA)
         province=self.province.currentText()
         if not province or province.startswith("Tutta"):
-            province="Brescia"
+            province=""
         source = {"Lombardia": "ARPA Lombardia", "Veneto": "ARPAV", "Trentino": "Meteotrentino", "Emilia-Romagna": "ARPAE Emilia-Romagna"}[area]
         self.current_source = source
         self.arpa_table.setRowCount(0); self.btn_arpa.setEnabled(False); self.phase.setText("Avvio " + source); self.progress.setValue(0)
@@ -284,7 +303,10 @@ class MonitoraggioDialog(QDialog):
     def _arpa_failed(self,message):
         self.phase.setText("Errore rete regionale"); self.arpa_label.setText(message); QMessageBox.warning(self,"Monitoraggio Davide · rete regionale",message)
 
-    def _arpa_cleanup(self): self.arpa_thread.deleteLater(); self.arpa_thread=None; self.arpa_worker=None; self.btn_arpa.setEnabled(True)
+    def _arpa_cleanup(self):
+        self.arpa_thread.deleteLater(); self.arpa_thread=None; self.arpa_worker=None; self.btn_arpa.setEnabled(True)
+        if self._pending_regional_reload:
+            QTimer.singleShot(0, self._run_pending_regional_reload)
 
     def _add_arpa_layer(self,stations):
         try:
