@@ -5,6 +5,7 @@ from .models import SourceDefinition
 
 SOURCES = (
     SourceDefinition("arpa_lombardia_stazioni", "ARPA Lombardia - stazioni", "Meteo/Idro/Neve", "Lombardia", "https://www.dati.lombardia.it/resource/nf78-nj6b.json?$limit=1"),
+    SourceDefinition("lombardia_rip_wms", "Regione Lombardia - Reticolo Idrico Principale", "Reticolo idrico", "Lombardia", "https://www.cartografia.servizirl.it/arcgis1/services/territorio/ReticoloIdrografico_RIRU/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities", True, "RIRU layer 7; Allegato A D.G.R. XII/3668/2024."),
     SourceDefinition("arpa_lombardia_radar", "ARPA Lombardia - radar", "Radar", "Lombardia", "https://radarlive.arpalombardia.it/CMP", False, "Layer radar previsto nella serie 0.7.x."),
     SourceDefinition("arpav_idrometeo", "ARPAV - rete idrometeorologica", "Meteo/Idro/Neve", "Veneto", "https://www.arpa.veneto.it/api/risorse/data-meteo/xml/Ultime48ore.xml"),
     SourceDefinition("meteotrentino_stazioni", "Meteotrentino - stazioni", "Meteo/Idro/Neve", "Trentino", "https://dati.meteotrentino.it/service.asmx/listaStazioniGeoJson"),
