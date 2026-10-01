@@ -1,3 +1,9 @@
+v0.7.0-alpha7 - 01/10/2026
+- Selezione della zona operativa mediante spunta visibile per Lombardia, Veneto, Trentino ed Emilia-Romagna.
+- La selezione resta esclusiva per mantenere coerenti provincia, rete regionale, tabella e layer cartografico.
+- Il cambio di spunta avvia automaticamente il caricamento della nuova zona.
+- Spunta indipendente per visualizzare il Reticolo Idrico Principale Lombardia dal WMS ufficiale RIRU, layer 7, Allegato A D.G.R. XII/3668/2024.
+
 v0.7.0-alpha6 - 01/10/2026
 - Correzione creazione layer sensori su QGIS 4/PyQt6: tipi QgsField compatibili con QMetaType.
 - ARPA Lombardia: riconoscimento del campo ufficiale `unit_dimisura` per le unita di misura.
