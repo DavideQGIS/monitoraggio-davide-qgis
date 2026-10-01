@@ -12,7 +12,7 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from .config import AREAS, DEFAULT_AREA, DEFAULT_PROVINCE, PLUGIN_VERSION, SENSOR_TYPES, SOURCE_CATALOG
-from .database import POSTGIS_NOTE, initialize_sqlite, save_diagnostic, upsert_sources
+from .database import POSTGIS_NOTE, initialize_sqlite, save_diagnostic, save_radar_product, upsert_sources
 from .core.freshness import annotate_freshness
 from .diagnostics import DiagnosticWorker
 from .connectors.arpa_lombardia import ArpaLombardiaWorker
@@ -21,7 +21,8 @@ from .connectors.ingv import IngvWorker
 from .connectors.meteotrentino import MeteotrentinoWorker
 from .connectors.arpae_emilia_romagna import ArpaeEmiliaRomagnaWorker
 from .connectors.aineva import AinevaWorker
-from .map_manager import ensure_google_hybrid, replace_earthquake_layer, replace_sensor_layer, set_lombardia_rip
+from .connectors.radar_lombardia import RadarLombardiaWorker
+from .map_manager import ensure_google_hybrid, replace_earthquake_layer, replace_radar_layer, replace_sensor_layer, set_lombardia_rip
 from .qt_compat import (
     ALIGN_CENTER, HEADER_CONTENTS, HEADER_STRETCH, NON_MODAL,
     NO_EDIT_TRIGGERS, WINDOW, WINDOW_CLOSE, WINDOW_MAXIMIZE, WINDOW_MINIMIZE,
@@ -65,6 +66,8 @@ class MonitoraggioDialog(QDialog):
         self.ingv_worker = None
         self.aineva_thread = None
         self.aineva_worker = None
+        self.radar_thread = None
+        self.radar_worker = None
         self.live_layer = None
         self.thresholds = []
         self.threshold_path = self.settings.value("threshold_csv", "", type=str)
@@ -158,8 +161,22 @@ class MonitoraggioDialog(QDialog):
             if i == 1: self.card_measures = card
             if i == 2: self.card_alerts = card
         layout.addWidget(box)
+        monitoring=QGroupBox("Monitoraggio CFMR Lombardia"); actions=QGridLayout(monitoring)
+        self.btn_radar=QPushButton("CARICA RADAR ARPA"); self.btn_radar.setObjectName("primaryButton"); self.btn_radar.clicked.connect(self.load_radar); actions.addWidget(self.btn_radar,0,0)
+        self.radar_label=QLabel("Composito radar non ancora caricato"); self.radar_label.setWordWrap(True); actions.addWidget(self.radar_label,0,1,1,4)
+        links=(
+            ("ALLERTALOM","https://www.allertalom.regione.lombardia.it/"),
+            ("ARCHIVIO BMP","https://www.allertalom.regione.lombardia.it/comunicati?t=CFMRPREV"),
+            ("LIRIS GUEST","https://iris.arpalombardia.it/gisINM/login.php"),
+            ("RADARLOM","https://www.arpalombardia.it/temi-ambientali/meteo-e-clima/radar-meteo/"),
+            ("PVR · ACCESSO ISTITUZIONALE","https://www.protezionecivile.servizirl.it/servizi/servizi/dettaglio?id=49"),
+        )
+        for column,(label,url) in enumerate(links):
+            button=QPushButton(label); button.clicked.connect(lambda checked=False, target=url: QDesktopServices.openUrl(QUrl(target))); actions.addWidget(button,1,column)
+        access_note=QLabel("Dati radar e collegamenti ufficiali. PVR/SINERGIE 2.0 richiede accesso autorizzato; il plugin non memorizza credenziali."); access_note.setWordWrap(True); actions.addWidget(access_note,2,0,1,5)
+        layout.addWidget(monitoring)
         note=QLabel("v%s · Reti regionali, ARPAE Emilia-Romagna, INGV e soglie documentate. I dati automatici recenti possono essere provvisori." % PLUGIN_VERSION); note.setWordWrap(True); layout.addWidget(note); layout.addStretch(1)
-        self.tabs.addTab(page,"Quadro operativo")
+        self.tabs.addTab(page,"Sala Operativa")
 
     def _sensors(self):
         page=QWidget(); layout=QVBoxLayout(page); table=QTableWidget(len(SENSOR_TYPES),4)
@@ -264,6 +281,8 @@ class MonitoraggioDialog(QDialog):
             self._toggle_refresh()
             if self.current_area in ("Lombardia", "Veneto", "Trentino", "Emilia-Romagna") and self.arpa_thread is None:
                 self.load_arpa()
+            if self.current_area == "Lombardia" and self.radar_thread is None:
+                self.load_radar(silent=True)
             if self.ingv_thread is None:
                 self.load_ingv(silent=True)
         except Exception as exc:
@@ -288,8 +307,40 @@ class MonitoraggioDialog(QDialog):
     def _auto_refresh(self):
         if self.current_area in ("Lombardia", "Veneto", "Trentino", "Emilia-Romagna") and self.arpa_thread is None:
             self.load_arpa(silent=True)
+        if self.current_area == "Lombardia" and self.radar_thread is None:
+            self.load_radar(silent=True)
         if self.ingv_thread is None:
             self.load_ingv(silent=True)
+
+    def load_radar(self, silent=False):
+        if self.radar_thread:
+            return
+        self._radar_silent = silent
+        self.btn_radar.setEnabled(False); self.radar_label.setText("Scarico l'ultimo composito radar ARPA Lombardia...")
+        self.radar_thread=QThread(self); self.radar_worker=RadarLombardiaWorker(); self.radar_worker.moveToThread(self.radar_thread)
+        self.radar_thread.started.connect(self.radar_worker.run); self.radar_worker.progress.connect(self._diag_progress)
+        self.radar_worker.finished.connect(self._radar_finished); self.radar_worker.failed.connect(self._radar_failed)
+        self.radar_worker.finished.connect(self.radar_thread.quit); self.radar_worker.failed.connect(self.radar_thread.quit)
+        self.radar_thread.finished.connect(self._radar_cleanup); self.radar_thread.start()
+
+    def _radar_finished(self, product):
+        try:
+            layer=replace_radar_layer(product)
+            self.radar_label.setText("Radar caricato · %s · %s byte compressi" % (product.get("observed_at_utc", ""), product.get("compressed_bytes", 0)))
+            self.phase.setText("Radar ARPA Lombardia aggiornato")
+            self.iface.setActiveLayer(layer)
+            if self.cache_path and os.path.isfile(self.cache_path):
+                save_radar_product(self.cache_path, product)
+        except Exception as exc:
+            self._radar_failed("%s: %s" % (type(exc).__name__, exc))
+
+    def _radar_failed(self, message):
+        self.radar_label.setText("Radar non caricato · " + message); self.phase.setText("Errore radar ARPA Lombardia")
+        if not getattr(self, "_radar_silent", False):
+            QMessageBox.warning(self,"Monitoraggio Davide · Radar ARPA Lombardia",message)
+
+    def _radar_cleanup(self):
+        self.radar_thread.deleteLater(); self.radar_thread=None; self.radar_worker=None; self.btn_radar.setEnabled(True)
 
     def load_arpa(self, silent=False):
         if self.arpa_thread: return
