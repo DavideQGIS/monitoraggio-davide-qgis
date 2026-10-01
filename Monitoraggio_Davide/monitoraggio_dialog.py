@@ -4,7 +4,7 @@ import tempfile
 from qgis.PyQt.QtCore import QSettings, Qt, QThread, QTimer, QUrl
 from qgis.PyQt.QtGui import QColor, QBrush, QDesktopServices
 from qgis.PyQt.QtWidgets import (
-    QAbstractItemView, QButtonGroup, QCheckBox, QComboBox, QDialog,
+    QAbstractItemView, QCheckBox, QComboBox, QDialog,
     QFileDialog, QFormLayout, QFrame, QGridLayout, QGroupBox, QHBoxLayout,
     QHeaderView, QLabel, QLineEdit, QMessageBox, QProgressBar, QPushButton,
     QScrollArea, QSizePolicy, QSpinBox, QTabWidget, QTableWidget,
@@ -22,7 +22,10 @@ from .connectors.meteotrentino import MeteotrentinoWorker
 from .connectors.arpae_emilia_romagna import ArpaeEmiliaRomagnaWorker
 from .connectors.aineva import AinevaWorker
 from .connectors.radar_lombardia import RadarLombardiaWorker
-from .map_manager import ensure_google_hybrid, replace_earthquake_layer, replace_radar_layer, replace_sensor_layer, set_lombardia_rip
+from .map_manager import (
+    ensure_google_hybrid, replace_capitals_layer, replace_earthquake_layer,
+    replace_radar_layer, replace_sensor_layer, set_lombardia_rip,
+)
 from .qt_compat import (
     ALIGN_CENTER, HEADER_CONTENTS, HEADER_STRETCH, NON_MODAL,
     NO_EDIT_TRIGGERS, WINDOW, WINDOW_CLOSE, WINDOW_MAXIMIZE, WINDOW_MINIMIZE,
@@ -61,6 +64,8 @@ class MonitoraggioDialog(QDialog):
         self.diag_worker = None
         self.arpa_thread = None
         self.arpa_worker = None
+        self._arpa_queue = []
+        self._arpa_totals = None
         self._pending_regional_reload = False
         self.ingv_thread = None
         self.ingv_worker = None
@@ -106,14 +111,18 @@ class MonitoraggioDialog(QDialog):
         header.addWidget(self.phase,1,0); header.addWidget(self.progress,1,1); header.addWidget(self.source_status,1,2); header.addWidget(self.btn_detail,1,3)
         root.addLayout(header)
 
-        geo = QHBoxLayout(); geo.addWidget(QLabel("ZONA MONITORATA:"))
-        self.area_group = QButtonGroup(self); self.area_group.setExclusive(True); self.area_buttons = {}
+        geo = QHBoxLayout(); geo.addWidget(QLabel("ZONE MONITORATE:"))
+        self.all_areas = QCheckBox("Tutte")
+        self.all_areas.setToolTip("Seleziona contemporaneamente tutte le aree")
+        self.all_areas.toggled.connect(self._toggle_all_areas)
+        geo.addWidget(self.all_areas)
+        self.area_buttons = {}
         for area in AREAS:
             button = QCheckBox(area)
-            button.setToolTip("Seleziona %s come zona operativa" % area)
-            self.area_group.addButton(button); self.area_buttons[area] = button
-            button.clicked.connect(lambda checked=False, a=area: self.set_area(a) if checked else None); geo.addWidget(button)
-        geo.addSpacing(10); geo.addWidget(QLabel("Provincia:")); self.province = QComboBox(); self.province.currentTextChanged.connect(self._province_changed); geo.addWidget(self.province)
+            button.setToolTip("Aggiungi o rimuovi %s dal monitoraggio" % area)
+            self.area_buttons[area] = button
+            button.toggled.connect(lambda checked=False, a=area: self._area_toggled(a, checked)); geo.addWidget(button)
+        geo.addSpacing(10); geo.addWidget(QLabel("Provincia / capoluogo:")); self.province = QComboBox(); self.province.currentTextChanged.connect(self._province_changed); geo.addWidget(self.province)
         self.btn_brescia = QPushButton("BRESCIA"); self.btn_brescia.setObjectName("quickButton"); self.btn_brescia.clicked.connect(lambda: self.set_area("Lombardia", "Brescia")); geo.addWidget(self.btn_brescia)
         self.btn_padova = QPushButton("PADOVA"); self.btn_padova.setObjectName("quickButton"); self.btn_padova.clicked.connect(lambda: self.set_area("Veneto", "Padova")); geo.addWidget(self.btn_padova)
         geo.addStretch(1); root.addLayout(geo)
@@ -132,6 +141,10 @@ class MonitoraggioDialog(QDialog):
         self.rip_checkbox.setToolTip("RIP ufficiale Regione Lombardia · Allegato A D.G.R. XII/3668/2024")
         self.rip_checkbox.toggled.connect(self._toggle_rip)
         live_row.addWidget(self.rip_checkbox)
+        self.capitals_checkbox = QCheckBox("Capoluoghi in mappa")
+        self.capitals_checkbox.setChecked(True)
+        self.capitals_checkbox.toggled.connect(self._toggle_capitals)
+        live_row.addWidget(self.capitals_checkbox)
         live_row.addWidget(QLabel("Ogni"))
         self.refresh_minutes = QSpinBox(); self.refresh_minutes.setRange(5, 60); self.refresh_minutes.setValue(10); self.refresh_minutes.setSuffix(" min")
         self.refresh_minutes.valueChanged.connect(self._toggle_refresh)
@@ -249,21 +262,73 @@ class MonitoraggioDialog(QDialog):
         for item in SOURCE_CATALOG: sl.addWidget(QLabel("• %s · %s"%(item["name"],item["group"])))
         layout.addWidget(src); layout.addStretch(1); self.tabs.addTab(page,"Impostazioni")
 
+    def selected_areas(self):
+        return [area for area in AREAS if self.area_buttons[area].isChecked()]
+
     def set_area(self, area, province=None):
-        previous_area = getattr(self, "current_area", None)
-        previous_province = self.province.currentText() if hasattr(self, "province") else ""
-        self.area_buttons[area].setChecked(True); self.province.blockSignals(True); self.province.clear(); self.province.addItem("Tutta la regione" if area != "Trentino" else "Tutta la provincia"); self.province.addItems(AREAS[area]); target=province or DEFAULT_PROVINCE[area]; index=self.province.findText(target); self.province.setCurrentIndex(max(0,index)); self.province.blockSignals(False); self.current_area=area; self._update_geo_status()
-        if previous_area is not None and (previous_area != area or previous_province != self.province.currentText()):
+        """Selezione rapida esclusiva usata dai pulsanti Brescia e Padova."""
+        had_selection = bool(getattr(self, "current_area", None))
+        for name, button in self.area_buttons.items():
+            button.blockSignals(True); button.setChecked(name == area); button.blockSignals(False)
+        self._sync_area_controls(preferred_province=province or DEFAULT_PROVINCE[area])
+        if had_selection:
             self._queue_regional_reload()
+
+    def _area_toggled(self, area, checked):
+        selected = self.selected_areas()
+        if not selected:
+            self.area_buttons[area].blockSignals(True)
+            self.area_buttons[area].setChecked(True)
+            self.area_buttons[area].blockSignals(False)
+            selected = [area]
+        self._sync_area_controls()
+        self._queue_regional_reload()
+
+    def _toggle_all_areas(self, checked):
+        if checked:
+            target = set(AREAS)
+        elif len(self.selected_areas()) == len(AREAS):
+            target = {DEFAULT_AREA}
+        else:
+            return
+        for area, button in self.area_buttons.items():
+            button.blockSignals(True); button.setChecked(area in target); button.blockSignals(False)
+        preferred = DEFAULT_PROVINCE[DEFAULT_AREA] if len(target) == 1 else None
+        self._sync_area_controls(preferred_province=preferred)
+        self._queue_regional_reload()
+
+    def _sync_area_controls(self, preferred_province=None):
+        selected = self.selected_areas()
+        self.current_area = selected[0]
+        self.all_areas.blockSignals(True)
+        self.all_areas.setChecked(len(selected) == len(AREAS))
+        self.all_areas.blockSignals(False)
+        previous = self.province.currentText()
+        self.province.blockSignals(True)
+        self.province.clear()
+        if len(selected) == 1:
+            area = selected[0]
+            self.province.addItem("Tutta la regione" if area != "Trentino" else "Tutta la provincia")
+            self.province.addItems(AREAS[area])
+            target = preferred_province or (previous if self.province.findText(previous) >= 0 else DEFAULT_PROVINCE[area])
+            self.province.setCurrentIndex(max(0, self.province.findText(target)))
+            self.province.setEnabled(True)
+        else:
+            self.province.addItem("Tutte le province · %d aree" % len(selected))
+            self.province.setEnabled(False)
+        self.province.blockSignals(False)
+        self._update_geo_status()
+        if hasattr(self, "capitals_checkbox"):
+            self._refresh_capitals_layer()
 
     def _province_changed(self, _text):
         self._update_geo_status()
-        if getattr(self, "current_area", None) is not None:
+        if getattr(self, "current_area", None) is not None and len(self.selected_areas()) == 1:
             self._queue_regional_reload()
 
     def _queue_regional_reload(self):
         self._pending_regional_reload = True
-        self.arpa_label.setText("Cambio area in corso · preparo la rete %s" % self.current_area)
+        self.arpa_label.setText("Cambio aree in corso · preparo %s" % ", ".join(self.selected_areas()))
         if self.arpa_thread is None:
             QTimer.singleShot(0, self._run_pending_regional_reload)
 
@@ -271,17 +336,22 @@ class MonitoraggioDialog(QDialog):
         if self._pending_regional_reload and self.arpa_thread is None:
             self._pending_regional_reload = False
             self.load_arpa(silent=True)
-    def _update_geo_status(self): self.status.setText("%s · %s"%(getattr(self,"current_area",DEFAULT_AREA),self.province.currentText() or DEFAULT_PROVINCE[DEFAULT_AREA]))
+    def _update_geo_status(self):
+        selected = self.selected_areas() if hasattr(self, "area_buttons") else [DEFAULT_AREA]
+        area_text = "Tutte le aree" if len(selected) == len(AREAS) else " + ".join(selected)
+        detail = self.province.currentText() if len(selected) == 1 else "%d regioni" % len(selected)
+        self.status.setText("%s · %s" % (area_text, detail))
     def _tick(self): self.live.setText("v%s · LIVE %s" % (PLUGIN_VERSION, __import__("datetime").datetime.now().strftime("%H:%M:%S")))
 
     def open_live_view(self):
         try:
             ensure_google_hybrid()
             set_lombardia_rip(self.rip_checkbox.isChecked())
+            self._refresh_capitals_layer()
             self._toggle_refresh()
-            if self.current_area in ("Lombardia", "Veneto", "Trentino", "Emilia-Romagna") and self.arpa_thread is None:
+            if self.selected_areas() and self.arpa_thread is None:
                 self.load_arpa()
-            if self.current_area == "Lombardia" and self.radar_thread is None:
+            if "Lombardia" in self.selected_areas() and self.radar_thread is None:
                 self.load_radar(silent=True)
             if self.ingv_thread is None:
                 self.load_ingv(silent=True)
@@ -298,6 +368,17 @@ class MonitoraggioDialog(QDialog):
             self.phase.setText("Errore Reticolo Idrico Principale")
             QMessageBox.warning(self, "Monitoraggio Davide · RIP Lombardia", str(exc))
 
+    def _toggle_capitals(self, _enabled):
+        self._refresh_capitals_layer()
+
+    def _refresh_capitals_layer(self):
+        try:
+            _layer, count = replace_capitals_layer(self.selected_areas(), self.capitals_checkbox.isChecked())
+            if self.capitals_checkbox.isChecked():
+                self.phase.setText("Capoluoghi aggiornati · %d punti" % count)
+        except Exception as exc:
+            self.phase.setText("Capoluoghi non caricati · %s" % exc)
+
     def _toggle_refresh(self, *_args):
         if self.auto_refresh.isChecked():
             self.refresh_timer.start(self.refresh_minutes.value() * 60 * 1000)
@@ -305,9 +386,9 @@ class MonitoraggioDialog(QDialog):
             self.refresh_timer.stop()
 
     def _auto_refresh(self):
-        if self.current_area in ("Lombardia", "Veneto", "Trentino", "Emilia-Romagna") and self.arpa_thread is None:
+        if self.selected_areas() and self.arpa_thread is None:
             self.load_arpa(silent=True)
-        if self.current_area == "Lombardia" and self.radar_thread is None:
+        if "Lombardia" in self.selected_areas() and self.radar_thread is None:
             self.load_radar(silent=True)
         if self.ingv_thread is None:
             self.load_ingv(silent=True)
@@ -343,14 +424,38 @@ class MonitoraggioDialog(QDialog):
         self.radar_thread.deleteLater(); self.radar_thread=None; self.radar_worker=None; self.btn_radar.setEnabled(True)
 
     def load_arpa(self, silent=False):
-        if self.arpa_thread: return
-        area = getattr(self,"current_area",DEFAULT_AREA)
-        province=self.province.currentText()
+        if self.arpa_thread:
+            return
+        areas = self.selected_areas()
+        if not areas:
+            return
+        province = self.province.currentText() if len(areas) == 1 else ""
         if not province or province.startswith("Tutta"):
-            province=""
+            province = ""
+        self._arpa_silent = silent
+        self._arpa_queue = [{"area": area, "province": province if len(areas) == 1 else ""} for area in areas]
+        self._arpa_totals = {
+            "stations": 0, "sensors": 0, "measurements": 0, "points": 0,
+            "alerts": 0, "attention": 0, "prealarm": 0,
+            "recent": 0, "delayed": 0, "expired": 0, "errors": [], "sources": [],
+        }
+        self.arpa_table.setRowCount(0)
+        self.btn_arpa.setEnabled(False)
+        self.phase.setText("Avvio %d reti regionali" % len(areas))
+        self.progress.setValue(0)
+        self._start_next_regional_worker()
+
+    def _start_next_regional_worker(self):
+        if not self._arpa_queue:
+            self._complete_regional_load()
+            return
+        item = self._arpa_queue.pop(0)
+        area, province = item["area"], item["province"]
         source = {"Lombardia": "ARPA Lombardia", "Veneto": "ARPAV", "Trentino": "Meteotrentino", "Emilia-Romagna": "ARPAE Emilia-Romagna"}[area]
+        self._arpa_active_area = area
+        self._arpa_active_province = province
         self.current_source = source
-        self.arpa_table.setRowCount(0); self.btn_arpa.setEnabled(False); self.phase.setText("Avvio " + source); self.progress.setValue(0)
+        self.phase.setText("Avvio " + source)
         if area == "Lombardia": worker = ArpaLombardiaWorker(province=province)
         elif area == "Veneto": worker = ArpavWorker(province=province)
         elif area == "Trentino": worker = MeteotrentinoWorker()
@@ -358,34 +463,77 @@ class MonitoraggioDialog(QDialog):
         self.arpa_thread=QThread(self); self.arpa_worker=worker; self.arpa_worker.moveToThread(self.arpa_thread); self.arpa_thread.started.connect(self.arpa_worker.run); self.arpa_worker.progress.connect(self._diag_progress); self.arpa_worker.finished.connect(self._arpa_finished); self.arpa_worker.failed.connect(self._arpa_failed); self.arpa_worker.finished.connect(self.arpa_thread.quit); self.arpa_worker.failed.connect(self.arpa_thread.quit); self.arpa_thread.finished.connect(self._arpa_cleanup); self.arpa_thread.start()
 
     def _arpa_finished(self,stations,summary):
+        source = getattr(self, "current_source", "Rete regionale")
         freshness=annotate_freshness(stations)
-        counts=apply_thresholds(stations,self.thresholds,getattr(self,"current_source",""))
-        self.arpa_table.setRowCount(len(stations))
+        counts=apply_thresholds(stations,self.thresholds,source)
+        start_row = self.arpa_table.rowCount()
+        self.arpa_table.setRowCount(start_row + len(stations))
         for row,station in enumerate(stations):
             latest=station.get("latest") or {}; value=latest.get("value"); values=(station.get("name"),station.get("municipality"),station.get("province"),station.get("sensor_type"),station.get("unit"),station.get("elevation"),"" if value is None else str(value),station.get("criticality","Soglia assente"),latest.get("freshness","Data assente"),latest.get("age_minutes"),latest.get("observed_at",""),station.get("sensor_id"))
-            for col,item_value in enumerate(values): self.arpa_table.setItem(row,col,QTableWidgetItem("" if item_value is None else str(item_value)))
-        source=getattr(self,"current_source","Rete regionale"); self.card_sensors.setText("Sensori caricati\n%d"%summary["sensors"]); self.card_measures.setText("Con ultimo dato\n%d"%summary["measurements"]); self.card_alerts.setText("Allarmi\n%d"%counts["Allarme"]); self.arpa_label.setText("%s · %d righe · %d dati · recenti:%d ritardati:%d scaduti:%d · A:%d P:%d ALL:%d"%(source,summary["stations"],summary["measurements"],freshness["Recente"],freshness["Ritardato"],freshness["Scaduto"],counts["Attenzione"],counts["Preallarme"],counts["Allarme"])); self.phase.setText(source+" caricato"); self.progress.setValue(100)
-        self._add_arpa_layer(stations)
+            for col,item_value in enumerate(values): self.arpa_table.setItem(start_row+row,col,QTableWidgetItem("" if item_value is None else str(item_value)))
+        totals = self._arpa_totals
+        totals["stations"] += summary.get("stations", len(stations))
+        totals["sensors"] += summary.get("sensors", len(stations))
+        totals["measurements"] += summary.get("measurements", 0)
+        totals["alerts"] += counts["Allarme"]
+        totals["attention"] += counts["Attenzione"]
+        totals["prealarm"] += counts["Preallarme"]
+        totals["recent"] += freshness["Recente"]
+        totals["delayed"] += freshness["Ritardato"]
+        totals["expired"] += freshness["Scaduto"]
+        totals["sources"].append(source)
+        totals["points"] += self._add_arpa_layer(stations, source, self._arpa_active_province or "Tutta la regione")
+        self.arpa_label.setText("%s caricato · restano %d reti" % (source, len(self._arpa_queue)))
+        self.phase.setText(source+" caricato")
         self.last_refresh.setText("Aggiornato: "+__import__("datetime").datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
 
     def _arpa_failed(self,message):
-        self.phase.setText("Errore rete regionale"); self.arpa_label.setText(message); QMessageBox.warning(self,"Monitoraggio Davide · rete regionale",message)
+        source = getattr(self, "current_source", "Rete regionale")
+        self._arpa_totals["errors"].append("%s: %s" % (source, message))
+        self.phase.setText("Errore " + source)
+        self.arpa_label.setText("%s non caricata · proseguo con le altre reti" % source)
+        if not getattr(self, "_arpa_silent", False) and len(self.selected_areas()) == 1:
+            QMessageBox.warning(self,"Monitoraggio Davide · rete regionale",message)
 
     def _arpa_cleanup(self):
         self.arpa_thread.deleteLater(); self.arpa_thread=None; self.arpa_worker=None; self.btn_arpa.setEnabled(True)
-        if self._pending_regional_reload:
+        if self._arpa_queue:
+            self.btn_arpa.setEnabled(False)
+            QTimer.singleShot(0, self._start_next_regional_worker)
+        elif self._pending_regional_reload:
             QTimer.singleShot(0, self._run_pending_regional_reload)
+        else:
+            self._complete_regional_load()
 
-    def _add_arpa_layer(self,stations):
+    def _complete_regional_load(self):
+        totals = self._arpa_totals
+        self.card_sensors.setText("Sensori caricati\n%d" % totals["sensors"])
+        self.card_measures.setText("Con ultimo dato\n%d" % totals["measurements"])
+        self.card_alerts.setText("Allarmi\n%d" % totals["alerts"])
+        message = "%d reti · %d stazioni · %d dati · %d punti · recenti:%d ritardati:%d scaduti:%d · A:%d P:%d ALL:%d" % (
+            len(totals["sources"]), totals["stations"], totals["measurements"], totals["points"],
+            totals["recent"], totals["delayed"], totals["expired"], totals["attention"],
+            totals["prealarm"], totals["alerts"],
+        )
+        if totals["errors"]:
+            message += " · errori:%d" % len(totals["errors"])
+        self.arpa_label.setText(message)
+        self.phase.setText("Reti regionali aggiornate")
+        self.progress.setValue(100)
+        self.btn_arpa.setEnabled(True)
+
+    def _add_arpa_layer(self,stations,source,province):
         try:
-            layer, feature_count = replace_sensor_layer(stations, self.province.currentText(), getattr(self,"current_source","Rete regionale"))
+            layer, feature_count = replace_sensor_layer(stations, province, source)
             self.live_layer = layer
             if feature_count:
                 self.iface.setActiveLayer(layer)
-                self.iface.zoomToActiveLayer()
-            self.arpa_label.setText(self.arpa_label.text()+" · %d punti in mappa"%feature_count)
+                if len(self.selected_areas()) == 1:
+                    self.iface.zoomToActiveLayer()
+            return feature_count
         except Exception as exc:
             self.arpa_label.setText(self.arpa_label.text()+" · Layer non creato: "+str(exc))
+            return 0
 
     def load_ingv(self, silent=False):
         if self.ingv_thread: return
