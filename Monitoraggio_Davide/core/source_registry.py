@@ -6,7 +6,11 @@ from .models import SourceDefinition
 SOURCES = (
     SourceDefinition("arpa_lombardia_stazioni", "ARPA Lombardia - stazioni", "Meteo/Idro/Neve", "Lombardia", "https://www.dati.lombardia.it/resource/nf78-nj6b.json?$limit=1"),
     SourceDefinition("lombardia_rip_wms", "Regione Lombardia - Reticolo Idrico Principale", "Reticolo idrico", "Lombardia", "https://www.cartografia.servizirl.it/arcgis1/services/territorio/ReticoloIdrografico_RIRU/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities", True, "RIRU layer 7; Allegato A D.G.R. XII/3668/2024."),
-    SourceDefinition("arpa_lombardia_radar", "ARPA Lombardia - radar", "Radar", "Lombardia", "https://radarlive.arpalombardia.it/CMP", False, "Layer radar previsto nella serie 0.7.x."),
+    SourceDefinition("arpa_lombardia_radar", "ARPA Lombardia - radar", "Radar", "Lombardia", "https://radarlive.arpalombardia.it/CMP/", True, "Composito pubblico GeoTIFF delle ultime 24 ore, aggiornamento nominale ogni 5 minuti."),
+    SourceDefinition("lombardia_cfmr", "Regione Lombardia - CFMR", "Sala operativa", "Lombardia", "https://www.regione.lombardia.it/sicurezza-e-protezione-civile/pianificazione-allertamento-e-gestione-emergenze/monitoraggio-e-allertamento/red-monitoraggio-rischi-naturali", False, "Pagina istituzionale del sistema di monitoraggio."),
+    SourceDefinition("lombardia_allertalom", "Regione Lombardia - allertaLOM e BMP", "Allerte/Bollettini", "Lombardia", "https://www.allertalom.regione.lombardia.it/", False, "Consultazione pubblica; feed automatico da validare."),
+    SourceDefinition("arpa_lombardia_liris", "ARPA Lombardia - LIRIS", "Idro/Nivo/Meteo", "Lombardia", "https://iris.arpalombardia.it/gisINM/login.php", False, "Accesso pubblico guest mediante sessione web."),
+    SourceDefinition("lombardia_pvr", "Regione Lombardia - PVR SINERGIE 2.0", "Sala operativa", "Lombardia", "https://www.protezionecivile.servizirl.it/servizi/servizi/dettaglio?id=49", False, "Accesso istituzionale autorizzato."),
     SourceDefinition("arpav_idrometeo", "ARPAV - rete idrometeorologica", "Meteo/Idro/Neve", "Veneto", "https://www.arpa.veneto.it/api/risorse/data-meteo/xml/Ultime48ore.xml"),
     SourceDefinition("meteotrentino_stazioni", "Meteotrentino - stazioni", "Meteo/Idro/Neve", "Trentino", "https://dati.meteotrentino.it/service.asmx/listaStazioniGeoJson"),
     SourceDefinition("aineva_caaml", "AINEVA - bollettino neve e valanghe", "Neve/Valanghe", "Tutte", "https://bollettini.aineva.it/albina_files/latest/it.xml", True, "Open data CAAML; emissione stagionale."),
