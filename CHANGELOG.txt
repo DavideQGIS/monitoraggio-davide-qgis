@@ -1,3 +1,11 @@
+v0.7.0-alpha8 - 01/10/2026
+- Nuova pagina iniziale Sala Operativa ispirata al sistema CFMR Lombardia.
+- Download reale dell'ultimo composito radar ARPA Lombardia in GeoTIFF compresso e caricamento automatico in mappa.
+- Conservazione di un solo raster radar temporaneo per evitare accumuli sul PC.
+- Accessi ufficiali a allertaLOM, archivio BMP, LIRIS guest, radarLOM e PVR/SINERGIE 2.0.
+- PVR indicato come accesso istituzionale; nessuna credenziale viene memorizzata dal plugin.
+- Cache SQLite schema v2 predisposta per prodotti radar, bollettini e allerte; salvataggio dei metadati radar.
+
 v0.7.0-alpha7 - 01/10/2026
 - Selezione della zona operativa mediante spunta visibile per Lombardia, Veneto, Trentino ed Emilia-Romagna.
 - La selezione resta esclusiva per mantenere coerenti provincia, rete regionale, tabella e layer cartografico.
