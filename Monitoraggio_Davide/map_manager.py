@@ -6,6 +6,7 @@ from qgis.core import (
     QgsVectorLayerSimpleLabeling,
 )
 from .qt_compat import FIELD_DOUBLE, FIELD_INT, FIELD_STRING
+from .config import CAPITALS
 
 
 GROUP_NAME = "Monitoraggio Davide"
@@ -14,6 +15,7 @@ SENSORS_PREFIX = "Sensori monitoraggio"
 RIP_LAYER_NAME = "Reticolo Idrico Principale Lombardia · DGR XII/3668"
 RIP_WMS_URL = "https://www.cartografia.servizirl.it/arcgis1/services/territorio/ReticoloIdrografico_RIRU/MapServer/WMSServer"
 RADAR_LAYER_PREFIX = "Radar ARPA Lombardia"
+CAPITALS_LAYER_NAME = "Capoluoghi · aree monitorate"
 
 
 def ensure_group():
@@ -64,6 +66,61 @@ def set_lombardia_rip(enabled=True):
     project.addMapLayer(layer, False)
     ensure_group().insertLayer(0, layer)
     return layer
+
+
+def replace_capitals_layer(areas, enabled=True):
+    """Crea un unico layer etichettato con i capoluoghi delle aree selezionate."""
+    project = QgsProject.instance()
+    for layer_id, old_layer in list(project.mapLayers().items()):
+        if old_layer.name() == CAPITALS_LAYER_NAME:
+            project.removeMapLayer(layer_id)
+    if not enabled:
+        return None, 0
+
+    selected = set(areas or [])
+    layer = QgsVectorLayer("Point?crs=EPSG:4326", CAPITALS_LAYER_NAME, "memory")
+    provider = layer.dataProvider()
+    provider.addAttributes([
+        QgsField("capoluogo", FIELD_STRING),
+        QgsField("provincia", FIELD_STRING),
+        QgsField("regione", FIELD_STRING),
+    ])
+    layer.updateFields()
+    features = []
+    for capital in CAPITALS:
+        if capital["area"] not in selected:
+            continue
+        feature = QgsFeature(layer.fields())
+        feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(capital["longitude"], capital["latitude"])))
+        feature.setAttributes([capital["name"], capital["province"], capital["area"]])
+        features.append(feature)
+    provider.addFeatures(features)
+    layer.updateExtents()
+
+    symbol = QgsMarkerSymbol.createSimple({
+        "name": "star", "color": "#2563eb", "outline_color": "#ffffff",
+        "outline_width": "0.8", "size": "5.5",
+    })
+    layer.renderer().setSymbol(symbol)
+    label_settings = QgsPalLayerSettings()
+    label_settings.fieldName = "capoluogo"
+    text_format = QgsTextFormat()
+    text_format.setFont(QFont("Arial", 9))
+    text_format.setSize(9)
+    text_format.setColor(QColor("#1e3a8a"))
+    buffer_settings = QgsTextBufferSettings()
+    buffer_settings.setEnabled(True)
+    buffer_settings.setSize(1.2)
+    buffer_settings.setColor(QColor("#ffffff"))
+    text_format.setBuffer(buffer_settings)
+    label_settings.setFormat(text_format)
+    layer.setLabeling(QgsVectorLayerSimpleLabeling(label_settings))
+    layer.setLabelsEnabled(True)
+    layer.setCustomProperty("monitoraggio_utr", True)
+    layer.setCustomProperty("monitoraggio_utr/type", "capoluoghi")
+    project.addMapLayer(layer, False)
+    ensure_group().insertLayer(0, layer)
+    return layer, len(features)
 
 
 def replace_radar_layer(product):
