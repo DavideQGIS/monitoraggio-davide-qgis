@@ -4,7 +4,7 @@ Plugin QGIS in Python per il monitoraggio territoriale di sensori ambientali ed 
 
 ## Stato del progetto
 
-La versione `0.6.0` costituisce la baseline iniziale del repository. Include:
+La versione `0.7.0-alpha8` include:
 
 - stazioni ARPA Lombardia;
 - rete ARPAV Veneto;
@@ -13,11 +13,15 @@ La versione `0.6.0` costituisce la baseline iniziale del repository. Include:
 - terremoti INGV;
 - importazione di soglie documentate da CSV;
 - rappresentazione georeferenziata dei sensori e delle criticità;
+- Sala Operativa con collegamenti ufficiali CFMR, allertaLOM, BMP, LIRIS, radarLOM e PVR;
+- ultimo composito radar ARPA Lombardia scaricato come GeoTIFF e caricato in mappa;
+- Reticolo Idrico Principale Lombardia dal WMS ufficiale RIRU;
+- bollettino neve e valanghe AINEVA in formato CAAML;
 - Google Hybrid come mappa di base;
 - diagnostica di raggiungibilità delle fonti;
 - compatibilità degli enum Qt tra QGIS 3/PyQt5 e QGIS 4/PyQt6.
 
-Le schede radar, Copernicus, dighe, neve e frane sono ancora parziali o predisposte. La configurazione PostGIS non è ancora operativa.
+Le schede Copernicus, dighe e frane sono ancora parziali o predisposte. L'animazione radar, le allerte strutturate e la configurazione PostGIS non sono ancora operative.
 
 ## Compatibilità prevista
 
