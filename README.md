@@ -4,7 +4,7 @@ Plugin QGIS in Python per il monitoraggio territoriale di sensori ambientali ed 
 
 ## Stato del progetto
 
-La versione `0.7.0-alpha8` include:
+La versione `0.7.0-alpha9` include:
 
 - stazioni ARPA Lombardia;
 - rete ARPAV Veneto;
@@ -16,6 +16,8 @@ La versione `0.7.0-alpha8` include:
 - Sala Operativa con collegamenti ufficiali CFMR, allertaLOM, BMP, LIRIS, radarLOM e PVR;
 - ultimo composito radar ARPA Lombardia scaricato come GeoTIFF e caricato in mappa;
 - Reticolo Idrico Principale Lombardia dal WMS ufficiale RIRU;
+- selezione contemporanea di Lombardia, Veneto, Trentino ed Emilia-Romagna;
+- layer etichettato dei 29 capoluoghi provinciali/metropolitani delle aree selezionate;
 - bollettino neve e valanghe AINEVA in formato CAAML;
 - Google Hybrid come mappa di base;
 - diagnostica di raggiungibilità delle fonti;
