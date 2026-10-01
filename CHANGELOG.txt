@@ -1,7 +1,8 @@
 v0.7.0-alpha5 - 01/10/2026
 - Nuova scheda Neve e valanghe con caricamento del bollettino ufficiale AINEVA in formato open data CAAML.
 - Sintesi di validita, grado massimo di pericolo, livelli, problemi valanghivi e riferimenti territoriali.
-- Gestione del periodo fuori stagione senza falso errore.
+- Gestione del periodo fuori stagione senza falso errore anche nella diagnostica generale.
+- Le fonti solo catalogate vengono indicate come avvisi e non come guasti dei feed live.
 - Catalogate le fonti per campi neve Meteotrentino, grandi dighe SIDRO, frane CRMFD e allerte E015.
 
 v0.7.0-alpha4 - 01/10/2026
