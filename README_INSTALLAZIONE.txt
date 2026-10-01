@@ -9,7 +9,8 @@ INSTALLAZIONE
 
 CONTENUTO DELLA PRIMA VERSIONE
 - Interfaccia derivata dallo stile operativo RiSC.
-- Selettori Lombardia, Veneto e Trentino.
+- Selettori multipli Lombardia, Veneto, Trentino ed Emilia-Romagna, anche tutti insieme.
+- Layer dei capoluoghi attivabile dall'interfaccia.
 - Avvio predefinito Lombardia > Brescia.
 - Pulsanti rapidi Brescia e Padova; Veneto predefinito su Padova.
 - Catalogo di sensori, inclusi nivometrici e nivopluviometrici.
