@@ -13,6 +13,7 @@ BASEMAP_NAME = "Google Hybrid · Monitoraggio Davide"
 SENSORS_PREFIX = "Sensori monitoraggio"
 RIP_LAYER_NAME = "Reticolo Idrico Principale Lombardia · DGR XII/3668"
 RIP_WMS_URL = "https://www.cartografia.servizirl.it/arcgis1/services/territorio/ReticoloIdrografico_RIRU/MapServer/WMSServer"
+RADAR_LAYER_PREFIX = "Radar ARPA Lombardia"
 
 
 def ensure_group():
@@ -60,6 +61,29 @@ def set_lombardia_rip(enabled=True):
     layer.setCustomProperty("monitoraggio_utr", True)
     layer.setCustomProperty("monitoraggio_utr/source", "RIRU Lombardia")
     layer.setCustomProperty("monitoraggio_utr/type", "reticolo_idrico_principale")
+    project.addMapLayer(layer, False)
+    ensure_group().insertLayer(0, layer)
+    return layer
+
+
+def replace_radar_layer(product):
+    """Sostituisce il composito radar ARPA mantenendo un solo raster in progetto."""
+    project = QgsProject.instance()
+    for layer_id, old_layer in list(project.mapLayers().items()):
+        if old_layer.name().startswith(RADAR_LAYER_PREFIX):
+            project.removeMapLayer(layer_id)
+    name = "%s · %s" % (RADAR_LAYER_PREFIX, product.get("observed_at_utc", ""))
+    layer = QgsRasterLayer(product["path"], name)
+    if not layer.isValid():
+        raise RuntimeError("QGIS non riconosce il GeoTIFF radar scaricato da ARPA Lombardia.")
+    renderer = layer.renderer()
+    if renderer is not None and hasattr(renderer, "setOpacity"):
+        renderer.setOpacity(0.68)
+    elif hasattr(layer, "setOpacity"):
+        layer.setOpacity(0.68)
+    layer.setCustomProperty("monitoraggio_utr", True)
+    layer.setCustomProperty("monitoraggio_utr/source", "ARPA Lombardia radar")
+    layer.setCustomProperty("monitoraggio_utr/observed_at", product.get("observed_at", ""))
     project.addMapLayer(layer, False)
     ensure_group().insertLayer(0, layer)
     return layer
